@@ -6,3 +6,5 @@ java/
 lavalink/*.jar
 lavalink/plugins/
 data/
+
+lavalink/

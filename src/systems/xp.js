@@ -1,4 +1,5 @@
-const { getUserData, saveData } = require('./database');
+const { getUserData, saveData } = require("./database");
+const { grantAchievements, notifyAchievements } = require("./achievements");
 
 const xpCooldown = 60 * 1000;
 
@@ -10,6 +11,9 @@ function addXpFromMessage(message, data) {
 
   if (now - userData.lastXpAt < xpCooldown) return;
 
+  userData.stats.messages += 1;
+  const unlocked = grantAchievements(userData, ["first_message"]);
+
   const gainedXp = Math.floor(Math.random() * 8) + 8;
   userData.xp += gainedXp;
   userData.lastXpAt = now;
@@ -18,9 +22,12 @@ function addXpFromMessage(message, data) {
   if (userData.xp >= neededXp) {
     userData.xp -= neededXp;
     userData.level += 1;
+    if (userData.level >= 5) unlocked.push(...grantAchievements(userData, ["level_5"]));
+    if (userData.level >= 10) unlocked.push(...grantAchievements(userData, ["level_10"]));
     message.channel.send(`${message.author} subiu para o nivel ${userData.level}.`);
   }
 
+  notifyAchievements(message, unlocked);
   saveData(data);
 }
 
@@ -76,5 +83,6 @@ function getNeededXp(level) {
 
 module.exports = {
   addXpFromMessage,
+  getNeededXp,
   handleXpCommand
 };

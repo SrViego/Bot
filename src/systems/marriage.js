@@ -1,4 +1,5 @@
-const { getGuildData, saveData } = require('./database');
+const { getGuildData, getUserData, saveData } = require("./database");
+const { grantAchievement, notifyAchievements } = require("./achievements");
 
 function handleMarriageCommand(message, data) {
   const args = message.content.trim().split(/\s+/);
@@ -90,8 +91,14 @@ function acceptProposal(message, data) {
   guildData.marriages[proposal.from] = message.author.id;
   delete guildData.proposals[message.author.id];
 
+  const authorData = getUserData(data, message.guild.id, message.author.id);
+  const partnerData = getUserData(data, message.guild.id, proposal.from);
+  const authorUnlocked = grantAchievement(authorData, "married") ? ["married"] : [];
+  grantAchievement(partnerData, "married");
+
   saveData(data);
   message.channel.send(`${message.author} e <@${proposal.from}> agora estao casados.`);
+  notifyAchievements(message, authorUnlocked);
 }
 
 function rejectProposal(message, data) {

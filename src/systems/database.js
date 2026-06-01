@@ -4,11 +4,20 @@ const path = require('node:path');
 const dataDir = path.join(__dirname, '..', '..', 'data');
 const dataFile = path.join(dataDir, 'database.json');
 
+const defaultGuildConfig = {
+  logChannelId: null,
+  autoRoleId: null,
+  welcomeEnabled: true,
+  goodbyeEnabled: true
+};
+
 const defaultData = {
   users: {},
   marriages: {},
   proposals: {},
-  warnings: {}
+  warnings: {},
+  guildConfigs: {},
+  moderationLogs: {}
 };
 
 function loadData() {
@@ -41,12 +50,23 @@ function getGuildData(data, guildId) {
   if (!data.marriages[guildId]) data.marriages[guildId] = {};
   if (!data.proposals[guildId]) data.proposals[guildId] = {};
   if (!data.warnings[guildId]) data.warnings[guildId] = {};
+  if (!data.guildConfigs) data.guildConfigs = {};
+  if (!data.moderationLogs) data.moderationLogs = {};
+  if (!data.guildConfigs[guildId]) data.guildConfigs[guildId] = structuredClone(defaultGuildConfig);
+  if (!data.moderationLogs[guildId]) data.moderationLogs[guildId] = [];
+
+  data.guildConfigs[guildId] = {
+    ...structuredClone(defaultGuildConfig),
+    ...data.guildConfigs[guildId]
+  };
 
   return {
     users: data.users[guildId],
     marriages: data.marriages[guildId],
     proposals: data.proposals[guildId],
-    warnings: data.warnings[guildId]
+    warnings: data.warnings[guildId],
+    config: data.guildConfigs[guildId],
+    moderationLogs: data.moderationLogs[guildId]
   };
 }
 
@@ -59,18 +79,53 @@ function getUserData(data, guildId, userId) {
       xp: 0,
       level: 1,
       lastXpAt: 0,
-      inventory: {}
+      lastRepAt: 0,
+      rep: 0,
+      inventory: {},
+      achievements: [],
+      minigames: {
+        lastCoinflipAt: 0,
+        lastGuessAt: 0,
+        wins: 0,
+        losses: 0
+      },
+      stats: {
+        messages: 0,
+        dailies: 0,
+        dailyStreak: 0,
+        bestDailyStreak: 0,
+        purchases: 0
+      }
     };
   }
 
-  if (!guildData.users[userId].inventory) {
-    guildData.users[userId].inventory = {};
-  }
+  const userData = guildData.users[userId];
 
-  return guildData.users[userId];
+  if (!userData.inventory) userData.inventory = {};
+  if (!Array.isArray(userData.achievements)) userData.achievements = [];
+  if (!userData.stats) userData.stats = {};
+  if (!userData.minigames) userData.minigames = {};
+  if (!Number.isInteger(userData.points)) userData.points = 0;
+  if (!Number.isInteger(userData.xp)) userData.xp = 0;
+  if (!Number.isInteger(userData.level)) userData.level = 1;
+  if (!Number.isInteger(userData.lastXpAt)) userData.lastXpAt = 0;
+  if (!Number.isInteger(userData.lastRepAt)) userData.lastRepAt = 0;
+  if (!Number.isInteger(userData.rep)) userData.rep = 0;
+  if (!Number.isInteger(userData.minigames.lastCoinflipAt)) userData.minigames.lastCoinflipAt = 0;
+  if (!Number.isInteger(userData.minigames.lastGuessAt)) userData.minigames.lastGuessAt = 0;
+  if (!Number.isInteger(userData.minigames.wins)) userData.minigames.wins = 0;
+  if (!Number.isInteger(userData.minigames.losses)) userData.minigames.losses = 0;
+  if (!Number.isInteger(userData.stats.messages)) userData.stats.messages = 0;
+  if (!Number.isInteger(userData.stats.dailies)) userData.stats.dailies = 0;
+  if (!Number.isInteger(userData.stats.dailyStreak)) userData.stats.dailyStreak = 0;
+  if (!Number.isInteger(userData.stats.bestDailyStreak)) userData.stats.bestDailyStreak = 0;
+  if (!Number.isInteger(userData.stats.purchases)) userData.stats.purchases = 0;
+
+  return userData;
 }
 
 module.exports = {
+  defaultGuildConfig,
   getGuildData,
   getUserData,
   loadData,

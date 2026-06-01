@@ -1,29 +1,54 @@
 const { getUserData, saveData } = require('./database');
+const { grantAchievements, notifyAchievements } = require('./achievements');
 
 const shopItems = [
   {
     id: 'cafe',
     name: 'Cafe de Dirtmouth',
+    category: 'consumivel',
     price: 50,
+    sellPrice: 25,
     description: 'Um cafe simples para guardar no inventario.'
   },
   {
     id: 'amuleto',
     name: 'Amuleto Brilhante',
+    category: 'colecionavel',
     price: 150,
+    sellPrice: 75,
     description: 'Item colecionavel da loja de pontos.'
   },
   {
     id: 'mapa',
     name: 'Mapa Antigo',
+    category: 'colecionavel',
     price: 250,
+    sellPrice: 125,
     description: 'Para quem gosta de explorar Hallownest.'
   },
   {
     id: 'coroa',
     name: 'Coroa Palida',
+    category: 'raro',
     price: 750,
+    sellPrice: 375,
     description: 'Item caro para ostentar no inventario.'
+  },
+  {
+    id: 'banco',
+    name: 'Banco de Descanso',
+    category: 'raro',
+    price: 1000,
+    sellPrice: 500,
+    description: 'Uma lembranca rara para colecionadores.'
+  },
+  {
+    id: 'lanterna',
+    name: 'Lanterna Lumafly',
+    category: 'utilidade',
+    price: 400,
+    sellPrice: 200,
+    description: 'Ilumina ate as cavernas mais esquecidas.'
   }
 ];
 
@@ -32,12 +57,27 @@ function handleShopCommand(message, data) {
   const command = args[0].toLowerCase();
 
   if (command === '!loja' || command === '!shop') {
-    showShop(message);
+    showShop(message, args);
+    return true;
+  }
+
+  if (command === '!item') {
+    showItem(message, args);
     return true;
   }
 
   if (command === '!comprar' || command === '!buy') {
     buyItem(message, args, data);
+    return true;
+  }
+
+  if (command === '!vender' || command === '!sell') {
+    sellItem(message, args, data);
+    return true;
+  }
+
+  if (command === '!presentear' || command === '!gift') {
+    giftItem(message, args, data);
     return true;
   }
 
@@ -54,17 +94,42 @@ function handleShopCommand(message, data) {
   return false;
 }
 
-function showShop(message) {
-  const lines = shopItems.map((item) => {
-    return `**${item.id}** - ${item.name} - ${item.price} pontos\n${item.description}`;
+function showShop(message, args) {
+  const category = args[1]?.toLowerCase();
+  const items = category ? shopItems.filter((item) => item.category === category) : shopItems;
+
+  if (items.length === 0) {
+    message.reply('Categoria nao encontrada. Categorias: consumivel, colecionavel, raro, utilidade.');
+    return;
+  }
+
+  const categories = [...new Set(shopItems.map((item) => item.category))].join(', ');
+  const lines = items.map((item) => {
+    return `**${item.id}** - ${item.name} - ${item.price} pontos (${item.category})`;
   });
 
-  message.reply(`Loja de pontos:\n\n${lines.join('\n\n')}\n\nUse: !comprar id_do_item`);
+  message.reply(`Loja de pontos:\n${lines.join('\n')}\n\nCategorias: ${categories}\nUse: !item id, !comprar id, !vender id, !presentear @usuario id`);
+}
+
+function showItem(message, args) {
+  const item = findItem(args[1]);
+
+  if (!item) {
+    message.reply('Item nao encontrado. Use !loja para ver os itens disponiveis.');
+    return;
+  }
+
+  message.reply([
+    `**${item.name}** (${item.id})`,
+    `Categoria: ${item.category}`,
+    `Preco: ${item.price} pontos`,
+    `Venda: ${item.sellPrice} pontos`,
+    item.description
+  ].join('\n'));
 }
 
 function buyItem(message, args, data) {
-  const itemId = args[1]?.toLowerCase();
-  const item = shopItems.find((shopItem) => shopItem.id === itemId);
+  const item = findItem(args[1]);
 
   if (!item) {
     message.reply('Item nao encontrado. Use !loja para ver os itens disponiveis.');
@@ -80,9 +145,67 @@ function buyItem(message, args, data) {
 
   userData.points -= item.price;
   userData.inventory[item.id] = (userData.inventory[item.id] ?? 0) + 1;
+  userData.stats.purchases += 1;
+
+  const unlocked = updateShopAchievements(userData);
   saveData(data);
 
   message.reply(`Voce comprou **${item.name}** por ${item.price} pontos. Saldo atual: ${userData.points}.`);
+  notifyAchievements(message, unlocked);
+}
+
+function sellItem(message, args, data) {
+  const item = findItem(args[1]);
+
+  if (!item) {
+    message.reply('Item nao encontrado. Use !inventario para ver seus itens.');
+    return;
+  }
+
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const amount = userData.inventory[item.id] ?? 0;
+
+  if (amount <= 0) {
+    message.reply(`Voce nao tem **${item.name}** no inventario.`);
+    return;
+  }
+
+  userData.inventory[item.id] -= 1;
+  userData.points += item.sellPrice;
+  saveData(data);
+
+  message.reply(`Voce vendeu **${item.name}** por ${item.sellPrice} pontos. Saldo atual: ${userData.points}.`);
+}
+
+function giftItem(message, args, data) {
+  const target = message.mentions.users.first();
+  const itemId = args[2];
+  const item = findItem(itemId);
+
+  if (!target || !item) {
+    message.reply('Use: !presentear @usuario id_do_item');
+    return;
+  }
+
+  if (target.bot || target.id === message.author.id) {
+    message.reply('Escolha outro usuario para presentear.');
+    return;
+  }
+
+  const senderData = getUserData(data, message.guild.id, message.author.id);
+  const amount = senderData.inventory[item.id] ?? 0;
+
+  if (amount <= 0) {
+    message.reply(`Voce nao tem **${item.name}** no inventario.`);
+    return;
+  }
+
+  const targetData = getUserData(data, message.guild.id, target.id);
+  senderData.inventory[item.id] -= 1;
+  targetData.inventory[item.id] = (targetData.inventory[item.id] ?? 0) + 1;
+  saveData(data);
+
+  message.channel.send(`${message.author} presenteou ${target} com **${item.name}**.`);
 }
 
 function showInventory(message, data) {
@@ -96,7 +219,7 @@ function showInventory(message, data) {
   }
 
   const lines = entries.map(([itemId, amount]) => {
-    const item = shopItems.find((shopItem) => shopItem.id === itemId);
+    const item = findItem(itemId);
     const name = item ? item.name : itemId;
     return `${name} (${itemId}) x${amount}`;
   });
@@ -105,8 +228,7 @@ function showInventory(message, data) {
 }
 
 function useItem(message, args, data) {
-  const itemId = args[1]?.toLowerCase();
-  const item = shopItems.find((shopItem) => shopItem.id === itemId);
+  const item = findItem(args[1]);
 
   if (!item) {
     message.reply('Item nao encontrado. Use !inventario para ver seus itens.');
@@ -125,6 +247,18 @@ function useItem(message, args, data) {
   saveData(data);
 
   message.reply(`${message.author} usou **${item.name}**.`);
+}
+
+function updateShopAchievements(userData) {
+  const unlocked = grantAchievements(userData, ['first_purchase']);
+  const itemTypes = Object.values(userData.inventory).filter((amount) => amount > 0).length;
+  if (itemTypes >= 3) unlocked.push(...grantAchievements(userData, ['collector']));
+  return unlocked;
+}
+
+function findItem(itemId) {
+  if (!itemId) return null;
+  return shopItems.find((item) => item.id === itemId.toLowerCase());
 }
 
 module.exports = {

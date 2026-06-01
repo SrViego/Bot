@@ -1,5 +1,6 @@
 const { PermissionsBitField } = require('discord.js');
 const { getGuildData, saveData } = require('./database');
+const { logModerationAction } = require('./modlogs');
 
 const moderationCommands = new Set([
   '!ban',
@@ -22,23 +23,23 @@ async function handleModerationCommand(message, data) {
 
   if (!moderationCommands.has(command)) return false;
 
-  if (command === '!ban') await banMember(message, args);
-  if (command === '!unban') await unbanUser(message, args);
-  if (command === '!kick') await kickMember(message, args);
-  if (command === '!timeout') await timeoutMember(message, args);
-  if (command === '!untimeout') await untimeoutMember(message, args);
-  if (command === '!warn') warnMember(message, args, data);
+  if (command === '!ban') await banMember(message, args, data);
+  if (command === '!unban') await unbanUser(message, args, data);
+  if (command === '!kick') await kickMember(message, args, data);
+  if (command === '!timeout') await timeoutMember(message, args, data);
+  if (command === '!untimeout') await untimeoutMember(message, args, data);
+  if (command === '!warn') await warnMember(message, args, data);
   if (command === '!warnings') showWarnings(message, data);
-  if (command === '!clearwarns') clearWarnings(message, data);
-  if (command === '!clear') await clearMessages(message, args);
-  if (command === '!slowmode') await setSlowmode(message, args);
-  if (command === '!lock') await setChannelLock(message, true);
-  if (command === '!unlock') await setChannelLock(message, false);
+  if (command === '!clearwarns') await clearWarnings(message, data);
+  if (command === '!clear') await clearMessages(message, args, data);
+  if (command === '!slowmode') await setSlowmode(message, args, data);
+  if (command === '!lock') await setChannelLock(message, true, data);
+  if (command === '!unlock') await setChannelLock(message, false, data);
 
   return true;
 }
 
-async function banMember(message, args) {
+async function banMember(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.BanMembers, 'banir membros')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.BanMembers, 'banir membros')) return;
 
@@ -54,9 +55,10 @@ async function banMember(message, args) {
 
   await target.ban({ reason });
   await message.channel.send(`${target.user.tag} foi banido. Motivo: ${reason}`);
+  await logModerationAction(message, data, { type: 'ban', targetId: target.id, reason });
 }
 
-async function unbanUser(message, args) {
+async function unbanUser(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.BanMembers, 'desbanir membros')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.BanMembers, 'desbanir membros')) return;
 
@@ -75,9 +77,10 @@ async function unbanUser(message, args) {
   if (!unbanned) return;
 
   await message.channel.send(`Usuario ${userId} foi desbanido.`);
+  await logModerationAction(message, data, { type: 'unban', targetId: userId });
 }
 
-async function kickMember(message, args) {
+async function kickMember(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.KickMembers, 'expulsar membros')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.KickMembers, 'expulsar membros')) return;
 
@@ -93,9 +96,10 @@ async function kickMember(message, args) {
 
   await target.kick(reason);
   await message.channel.send(`${target.user.tag} foi expulso. Motivo: ${reason}`);
+  await logModerationAction(message, data, { type: 'kick', targetId: target.id, reason });
 }
 
-async function timeoutMember(message, args) {
+async function timeoutMember(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ModerateMembers, 'silenciar membros')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.ModerateMembers, 'silenciar membros')) return;
 
@@ -117,9 +121,10 @@ async function timeoutMember(message, args) {
 
   await target.timeout(duration, reason);
   await message.channel.send(`${target.user.tag} recebeu timeout. Motivo: ${reason}`);
+  await logModerationAction(message, data, { type: 'timeout', targetId: target.id, reason });
 }
 
-async function untimeoutMember(message, args) {
+async function untimeoutMember(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ModerateMembers, 'remover timeout')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.ModerateMembers, 'remover timeout')) return;
 
@@ -134,9 +139,10 @@ async function untimeoutMember(message, args) {
 
   await target.timeout(null, 'Timeout removido.');
   await message.channel.send(`Timeout removido de ${target.user.tag}.`);
+  await logModerationAction(message, data, { type: 'untimeout', targetId: target.id });
 }
 
-function warnMember(message, args, data) {
+async function warnMember(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ModerateMembers, 'avisar membros')) return;
 
   const target = message.mentions.users.first();
@@ -163,6 +169,7 @@ function warnMember(message, args, data) {
 
   saveData(data);
   message.channel.send(`${target} recebeu um aviso. Total: ${guildData.warnings[target.id].length}. Motivo: ${reason}`);
+  await logModerationAction(message, data, { type: 'warn', targetId: target.id, reason });
 }
 
 function showWarnings(message, data) {
@@ -182,7 +189,7 @@ function showWarnings(message, data) {
   message.reply(`Avisos de ${target}:\n${lines.join('\n')}`);
 }
 
-function clearWarnings(message, data) {
+async function clearWarnings(message, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ModerateMembers, 'limpar avisos')) return;
 
   const target = message.mentions.users.first();
@@ -197,9 +204,10 @@ function clearWarnings(message, data) {
   saveData(data);
 
   message.reply(`Avisos de ${target} foram limpos.`);
+  await logModerationAction(message, data, { type: 'clearwarns', targetId: target.id });
 }
 
-async function clearMessages(message, args) {
+async function clearMessages(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ManageMessages, 'apagar mensagens')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.ManageMessages, 'apagar mensagens')) return;
 
@@ -219,9 +227,10 @@ async function clearMessages(message, args) {
 
   const reply = await message.channel.send(`${deleted.size} mensagens apagadas.`);
   setTimeout(() => reply.delete().catch(() => null), 5000);
+  await logModerationAction(message, data, { type: 'clear', reason: `${deleted.size} mensagens` });
 }
 
-async function setSlowmode(message, args) {
+async function setSlowmode(message, args, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ManageChannels, 'alterar modo lento')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.ManageChannels, 'alterar modo lento')) return;
 
@@ -234,9 +243,10 @@ async function setSlowmode(message, args) {
 
   await message.channel.setRateLimitPerUser(seconds);
   await message.reply(seconds === 0 ? 'Modo lento desativado.' : `Modo lento definido para ${seconds}s.`);
+  await logModerationAction(message, data, { type: 'slowmode', reason: `${seconds}s` });
 }
 
-async function setChannelLock(message, locked) {
+async function setChannelLock(message, locked, data) {
   if (!hasPermission(message, PermissionsBitField.Flags.ManageChannels, locked ? 'trancar canal' : 'destrancar canal')) return;
   if (!hasBotPermission(message, PermissionsBitField.Flags.ManageChannels, locked ? 'trancar canal' : 'destrancar canal')) return;
 
@@ -247,6 +257,7 @@ async function setChannelLock(message, locked) {
   });
 
   await message.reply(locked ? 'Canal trancado.' : 'Canal destrancado.');
+  await logModerationAction(message, data, { type: locked ? 'lock' : 'unlock' });
 }
 
 function hasPermission(message, permission, action) {

@@ -1,4 +1,5 @@
-const { getUserData, saveData } = require('./database');
+const { getUserData, saveData } = require("./database");
+const { grantAchievements, notifyAchievements } = require("./achievements");
 
 function handlePointsCommand(message, data) {
   const args = message.content.trim().split(/\s+/);
@@ -33,6 +34,7 @@ function claimDaily(message, data) {
   const userData = getUserData(data, message.guild.id, message.author.id);
   const now = Date.now();
   const oneDay = 24 * 60 * 60 * 1000;
+  const twoDays = 2 * oneDay;
 
   if (userData.lastDailyAt && now - userData.lastDailyAt < oneDay) {
     const remaining = oneDay - (now - userData.lastDailyAt);
@@ -41,12 +43,26 @@ function claimDaily(message, data) {
     return;
   }
 
-  const reward = 100;
+  const keptStreak = userData.lastDailyAt && now - userData.lastDailyAt <= twoDays;
+  userData.stats.dailyStreak = keptStreak ? userData.stats.dailyStreak + 1 : 1;
+  userData.stats.bestDailyStreak = Math.max(userData.stats.bestDailyStreak, userData.stats.dailyStreak);
+  userData.stats.dailies += 1;
+
+  const streakBonus = Math.min((userData.stats.dailyStreak - 1) * 20, 200);
+  const reward = 100 + streakBonus;
   userData.points += reward;
   userData.lastDailyAt = now;
-  saveData(data);
 
-  message.reply(`Voce recebeu ${reward} pontos diarios.`);
+  const unlocked = grantAchievements(userData, ["first_daily"]);
+  if (userData.stats.dailyStreak >= 3) unlocked.push(...grantAchievements(userData, ["daily_3"]));
+  if (userData.stats.dailyStreak >= 7) unlocked.push(...grantAchievements(userData, ["daily_7"]));
+  if (userData.points >= 1000) unlocked.push(...grantAchievements(userData, ["wealthy"]));
+
+  saveData(data);
+  message.reply(
+    `Voce recebeu ${reward} pontos diarios. Sequencia atual: ${userData.stats.dailyStreak} dia(s).`
+  );
+  notifyAchievements(message, unlocked);
 }
 
 function showPointsRank(message, data) {

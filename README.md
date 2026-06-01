@@ -1,6 +1,20 @@
 # Isolde Bot
 
-Bot de Discord em Node.js usando discord.js.
+Bot de Discord em Node.js usando `discord.js`, com musica via Lavalink, economia, loja, XP, sistemas sociais, moderacao, configuracoes por servidor e respostas em embeds verdes.
+
+## Requisitos
+
+- Node.js 22.12 ou superior
+- npm
+- Um bot criado no Discord Developer Portal
+- Lavalink rodando separadamente para usar musica
+
+No Discord Developer Portal, ative:
+
+```txt
+Message Content Intent
+Server Members Intent
+```
 
 ## Como Rodar
 
@@ -10,39 +24,76 @@ Bot de Discord em Node.js usando discord.js.
 npm install
 ```
 
-2. Crie o arquivo `.env` com base no exemplo:
-
-```sh
-cp .env.example .env
-```
-
-3. Configure o `.env`:
+2. Crie um arquivo `.env` na raiz do projeto:
 
 ```env
 DISCORD_TOKEN=seu_token_aqui
 WELCOME_CHANNEL_ID=id_do_canal_de_boas_vindas
 GOODBYE_CHANNEL_ID=id_do_canal_de_despedida
+
+LAVALINK_HOST=127.0.0.1
+LAVALINK_PORT=2333
+LAVALINK_PASSWORD=youshallnotpass
+LAVALINK_SECURE=false
+LAVALINK_SEARCH_SOURCE=ytmsearch
+LAVALINK_DEFAULT_VOLUME=80
 ```
 
-4. Inicie o bot:
+3. Inicie o bot:
 
 ```sh
 npm start
 ```
 
-No Discord Developer Portal, ative `Message Content Intent` e `Server Members Intent`.
+Para desenvolvimento com reload automatico:
 
-## Comandos Basicos
+```sh
+npm run dev
+```
+
+## Lavalink
+
+O bot usa `lavalink-client`, entao o servidor Lavalink precisa estar ligado antes do bot tocar musica.
+
+A pasta `lavalink/` e local e fica fora do Git. Use ela para guardar `Lavalink.jar`, plugins e `application.yml` da sua maquina. Para YouTube funcionar no Lavalink v4, use um plugin de source como `youtube-source`.
+
+Permissoes recomendadas para musica:
+
+```txt
+Ver canal
+Conectar
+Falar
+```
+
+## Visual
+
+As respostas dos sistemas usam embeds verdes. A cor fica centralizada em:
+
+```txt
+src/systems/theme.js
+```
+
+Cor atual:
+
+```txt
+0x2ecc71
+```
+
+## Comandos
+
+### Basicos
 
 ```txt
 !ping
+!help
+!ajuda
 ```
 
-## Musica
+### Musica
 
 ```txt
-!play link_ou_nome_da_musica
-!p link_ou_nome_da_musica
+!play nome_ou_link
+!p nome_ou_link
 !queue
 !fila
 !np
@@ -52,38 +103,91 @@ No Discord Developer Portal, ative `Message Content Intent` e `Server Members In
 !continuar
 !skip
 !stop
+!volume
 !volume 1-100
 ```
 
-Para usar musica, entre em um canal de voz e envie `!play` com um link do YouTube ou uma busca por texto. O bot usa **Lavalink** para resolver e transmitir audio. Permissoes: `Ver canal`, `Conectar` e `Falar`.
+### Perfil, XP e Conquistas
 
-Antes de iniciar o bot, deixe um servidor Lavalink rodando e configure o `.env`:
-
-```env
-LAVALINK_HOST=127.0.0.1
-LAVALINK_PORT=2333
-LAVALINK_PASSWORD=youshallnotpass
-LAVALINK_SECURE=false
-LAVALINK_SEARCH_SOURCE=ytmsearch
-LAVALINK_DEFAULT_VOLUME=80
+```txt
+!perfil
+!perfil @usuario
+!profile
+!xp
+!xp @usuario
+!level
+!rankxp
+!conquistas
+!conquistas @usuario
+!achievements
 ```
 
-Para YouTube funcionar no Lavalink v4, use um plugin de source como `youtube-source` no servidor Lavalink. Deixei um exemplo em `lavalink/application.yml`; coloque esse arquivo na mesma pasta do `Lavalink.jar` antes de rodar o servidor.
+O XP sobe automaticamente quando alguem conversa. Existe um intervalo de 60 segundos por usuario para evitar farm.
 
-## Boas-vindas e Despedida
+### Pontos e Daily
 
-Configure os IDs no `.env`:
-
-```env
-WELCOME_CHANNEL_ID=id_do_canal_de_boas_vindas
-GOODBYE_CHANNEL_ID=id_do_canal_de_despedida
+```txt
+!daily
+!pontos
+!pontos @usuario
+!rankpontos
 ```
 
-Se os IDs nao forem configurados, o bot tenta usar o canal de sistema do servidor.
+O `!daily` tem sequencia diaria e bonus por streak.
 
-## Sistemas Sociais
+### Loja
 
-Casamento:
+```txt
+!loja
+!loja categoria
+!shop
+!item id_do_item
+!comprar id_do_item
+!buy id_do_item
+!vender id_do_item
+!sell id_do_item
+!presentear @usuario id_do_item
+!gift @usuario id_do_item
+!inventario
+!inventario @usuario
+!inv
+!usar id_do_item
+```
+
+Categorias atuais:
+
+```txt
+consumivel
+colecionavel
+raro
+utilidade
+```
+
+### Minigames
+
+```txt
+!coinflip cara aposta
+!coinflip coroa aposta
+!moeda cara aposta
+!guess numero_de_1_a_5 aposta
+!adivinhar numero_de_1_a_5 aposta
+!minigames
+!minigames @usuario
+```
+
+As apostas usam pontos do usuario.
+
+### Reputacao
+
+```txt
+!rep @usuario
+!rankrep
+!reps
+```
+
+Cada usuario tem cooldown para dar reputacao.
+
+### Casamento
 
 ```txt
 !casar @usuario
@@ -94,55 +198,58 @@ Casamento:
 !casamento @usuario
 ```
 
-Pontos:
+### Utilidade
 
 ```txt
-!daily
-!pontos
-!pontos @usuario
-!rankpontos
+!avatar
+!avatar @usuario
+!userinfo
+!userinfo @usuario
+!serverinfo
+!say mensagem
 ```
 
-## Loja de Pontos
+### Configuracoes
 
-Itens atuais:
+Use `!config` ou `!painel` para ver o painel de configuracoes do servidor.
 
 ```txt
-cafe - 50 pontos
-amuleto - 150 pontos
-mapa - 250 pontos
-coroa - 750 pontos
+!config
+!painel
+!config logs #canal
+!config logs off
+!config autorole @cargo
+!config autorole off
+!config welcome on
+!config welcome off
+!config goodbye on
+!config goodbye off
 ```
 
-Comandos:
+Permissao necessaria para alterar configuracoes:
 
 ```txt
-!loja
-!shop
-!comprar id_do_item
-!buy id_do_item
-!inventario
-!inventario @usuario
-!inv
-!usar id_do_item
+Gerenciar Servidor
 ```
 
-As compras usam os pontos do sistema de pontos e ficam salvas no inventario do usuario.
+### Boas-vindas, Despedida e Auto Cargo
 
-XP por mensagem:
+Boas-vindas e despedidas usam os canais do `.env`:
+
+```env
+WELCOME_CHANNEL_ID=id_do_canal_de_boas_vindas
+GOODBYE_CHANNEL_ID=id_do_canal_de_despedida
+```
+
+Se os IDs nao forem configurados, o bot tenta usar o canal de sistema do servidor.
+
+O auto cargo e configurado por servidor com:
 
 ```txt
-!xp
-!xp @usuario
-!level
-!rankxp
+!config autorole @cargo
 ```
 
-O XP sobe automaticamente quando alguem conversa. Existe um intervalo de 60 segundos por usuario para evitar farm.
-
-## Moderação
-
-Comandos disponiveis:
+### Moderacao
 
 ```txt
 !ban @usuario motivo
@@ -158,6 +265,7 @@ Comandos disponiveis:
 !slowmode segundos
 !lock
 !unlock
+!modlogs
 ```
 
 Permissoes que o bot pode precisar, dependendo do comando:
@@ -172,12 +280,28 @@ Gerenciar canais
 
 Para ban, kick e timeout, o cargo do bot precisa estar acima do cargo da pessoa alvo.
 
+Os logs de moderacao ficam salvos localmente e podem ser enviados para um canal configurado com:
+
+```txt
+!config logs #canal
+```
+
 ## Dados Locais
 
-Os dados de XP, pontos, avisos e casamentos ficam em:
+Os dados de XP, pontos, reputacao, avisos, casamentos, inventario, conquistas, configuracoes e logs ficam em:
 
 ```txt
 data/database.json
 ```
 
 Essa pasta fica fora do Git pelo `.gitignore`.
+
+Tambem ficam fora do Git:
+
+```txt
+.env
+node_modules/
+nodejs/
+java/
+lavalink/
+```

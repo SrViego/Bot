@@ -1,0 +1,13 @@
+node_modules
+nodejs
+java
+.git
+.env
+data
+lavalink
+scripts
+*.md
+NIXOS.md
+Dockerfile
+docker-compose.yml
+.dockerignore

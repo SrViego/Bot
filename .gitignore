@@ -1,10 +1,30 @@
+# Dependencias e runtime local
 node_modules/
-.env
 npm-debug.log*
-nodejs/
-java/
-lavalink/*.jar
-lavalink/plugins/
+*.log
+
+# Segredos — NUNCA commitar
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Dados do bot (XP, loja, etc.)
 data/
 
-lavalink/
+# Binarios portateis de outro SO (nao usamos no NixOS/Docker)
+nodejs/
+java/
+
+# Lavalink: jars e plugins sao baixados localmente; config pode ir pro git
+lavalink/*.jar
+lavalink/**/*.jar
+lavalink/plugins/*
+!lavalink/plugins/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

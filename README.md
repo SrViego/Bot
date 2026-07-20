@@ -1,35 +1,136 @@
 # Isolde Bot
 
-Bot de Discord em Node.js usando `discord.js`, com musica via Lavalink, economia, loja, XP, sistemas sociais, moderacao, configuracoes por servidor e respostas em embeds verdes.
+Bot de Discord em Node.js (`discord.js`), com música via Lavalink, economia, loja, XP, sistemas sociais, moderação, configurações por servidor e embeds verdes.
 
-## Requisitos
+Repositório: [SrViego/Isolde-bot](https://github.com/SrViego/Isolde-bot)
 
-- Node.js 22.12 ou superior
-- npm
-- Um bot criado no Discord Developer Portal
-- Lavalink rodando separadamente para usar musica
+---
 
-No Discord Developer Portal, ative:
+## Segurança (importante)
+
+**Nunca** coloque no Git / GitHub:
+
+| Arquivo | Motivo |
+|---------|--------|
+| `.env` | Token do bot e IDs sensíveis |
+| `data/` | XP, pontos, avisos, inventário do servidor |
+| `node_modules/` | Dependências (instala com npm) |
+| `lavalink/*.jar` e `plugins/*.jar` | Binários grandes / locais |
+| Pastas `nodejs/` e `java/` | Runtime portátil de outro SO |
+
+O que **pode** ir pro Git: código em `src/`, `package.json`, `Dockerfile`, `docker-compose.yml`, `.env.example`, `lavalink/application.yml` (senha padrão de exemplo).
+
+Se o token vazar: [Discord Developer Portal](https://discord.com/developers/applications) → Bot → **Reset Token**.
+
+---
+
+## Requisitos no Discord
+
+No [Developer Portal](https://discord.com/developers/applications), ative:
 
 ```txt
 Message Content Intent
 Server Members Intent
 ```
 
-## Como Rodar
+Permissões úteis no servidor: Ver canal, Conectar, Falar, Banir/Expulsar/Moderar membros, Gerenciar mensagens/canais (conforme os comandos que for usar).
 
-1. Instale as dependencias:
+---
+
+## Forma recomendada: Docker
+
+Não precisa instalar Node nem Java no sistema. Só **Docker** + arquivo `.env`.
+
+### 1. Clone e configure
+
+```sh
+git clone https://github.com/SrViego/Isolde-bot.git
+cd Isolde-bot
+
+cp .env.example .env
+# edite .env e coloque o DISCORD_TOKEN real
+```
+
+### 2. Plugin YouTube do Lavalink (música)
+
+O compose usa a imagem oficial do Lavalink e a pasta `lavalink/plugins/`.  
+Coloque o JAR do plugin (ex.: `youtube-plugin-….jar`) em:
+
+```txt
+lavalink/plugins/
+```
+
+A config está em `lavalink/application.yml` (senha padrão: `youshallnotpass`, igual ao `.env.example`).
+
+### 3. Subir
+
+```sh
+./scripts/docker-up.sh
+# ou:
+docker compose up -d --build
+```
+
+### 4. Logs e parar
+
+```sh
+docker compose logs -f bot
+docker compose logs -f lavalink
+
+./scripts/docker-down.sh
+# ou: docker compose down
+```
+
+O Compose força `LAVALINK_HOST=lavalink` (rede interna). O valor `127.0.0.1` no `.env` só vale fora do Docker.
+
+---
+
+## Forma alternativa: Node local (+ Lavalink separado)
+
+### Requisitos
+
+- Node.js **22.12+** e npm  
+- Java (só se for rodar o Lavalink na máquina, sem Docker)
+
+### Passos
 
 ```sh
 npm install
+cp .env.example .env
+# preencha DISCORD_TOKEN
+
+# Terminal 1 — música (Java + lavalink/Lavalink.jar local, se tiver)
+./scripts/start-lavalink.sh
+
+# Terminal 2 — bot
+./scripts/start-bot.sh
 ```
 
-2. Crie um arquivo `.env` na raiz do projeto:
+Ou só o bot (sem música):
+
+```sh
+npm start
+```
+
+Desenvolvimento com reload:
+
+```sh
+npm run dev
+```
+
+### NixOS
+
+Veja [NIXOS.md](./NIXOS.md). Resumo: use **Docker**, ou `nix-shell -p nodejs_22 jre_headless` se for rodar nativo. Binários em `nodejs/` e `java/` de outro Linux **não** funcionam bem no NixOS.
+
+---
+
+## Variáveis de ambiente (`.env`)
+
+Copie de `.env.example`:
 
 ```env
 DISCORD_TOKEN=seu_token_aqui
-WELCOME_CHANNEL_ID=id_do_canal_de_boas_vindas
-GOODBYE_CHANNEL_ID=id_do_canal_de_despedida
+WELCOME_CHANNEL_ID=          # opcional
+GOODBYE_CHANNEL_ID=          # opcional
 
 LAVALINK_HOST=127.0.0.1
 LAVALINK_PORT=2333
@@ -39,49 +140,48 @@ LAVALINK_SEARCH_SOURCE=ytmsearch
 LAVALINK_DEFAULT_VOLUME=80
 ```
 
-3. Inicie o bot:
+---
+
+## Como versionar no Git (commit e push)
 
 ```sh
-npm start
+cd ~/Documentos/HallownestBots/Isolde   # ou a pasta do clone
+
+git status
+git add -A
+# confira que .env NÃO aparece:
+git status
+
+git commit -m "Descreva a mudança"
+git push origin teste    # ou main, conforme a branch
 ```
 
-Para desenvolvimento com reload automatico:
+Antes do push, confira:
 
 ```sh
-npm run dev
+git status
+# não deve listar .env nem data/
 ```
 
-## Lavalink
+Branch atual do repositório remoto costuma ser `teste` (veja com `git branch -vv`).
 
-O bot usa `lavalink-client`, entao o servidor Lavalink precisa estar ligado antes do bot tocar musica.
+---
 
-A pasta `lavalink/` e local e fica fora do Git. Use ela para guardar `Lavalink.jar`, plugins e `application.yml` da sua maquina. Para YouTube funcionar no Lavalink v4, use um plugin de source como `youtube-source`.
+## Dados locais
 
-Permissoes recomendadas para musica:
+Ficam em `data/database.json` (fora do Git): XP, pontos, reputação, avisos, casamentos, inventário, conquistas, configs e logs.
 
-```txt
-Ver canal
-Conectar
-Falar
-```
+---
 
 ## Visual
 
-As respostas dos sistemas usam embeds verdes. A cor fica centralizada em:
+Embeds verdes — cor em `src/systems/theme.js` (`0x2ecc71`).
 
-```txt
-src/systems/theme.js
-```
-
-Cor atual:
-
-```txt
-0x2ecc71
-```
+---
 
 ## Comandos
 
-### Basicos
+### Básicos
 
 ```txt
 !ping
@@ -89,219 +189,122 @@ Cor atual:
 !ajuda
 ```
 
-### Musica
+### Música
 
 ```txt
 !play nome_ou_link
 !p nome_ou_link
-!queue
-!fila
-!np
-!tocando
+!queue / !fila
+!np / !tocando
 !pause
-!resume
-!continuar
+!resume / !continuar
 !skip
 !stop
 !volume
 !volume 1-100
 ```
 
-### Perfil, XP e Conquistas
+### Perfil, XP e conquistas
 
 ```txt
-!perfil
-!perfil @usuario
-!profile
-!xp
-!xp @usuario
-!level
+!perfil / !profile [@usuario]
+!xp / !level [@usuario]
 !rankxp
-!conquistas
-!conquistas @usuario
-!achievements
+!conquistas / !achievements [@usuario]
 ```
 
-O XP sobe automaticamente quando alguem conversa. Existe um intervalo de 60 segundos por usuario para evitar farm.
+XP sobe ao conversar (cooldown de 60s por usuário).
 
-### Pontos e Daily
+### Pontos e daily
 
 ```txt
 !daily
-!pontos
-!pontos @usuario
+!pontos [@usuario]
 !rankpontos
 ```
-
-O `!daily` tem sequencia diaria e bonus por streak.
 
 ### Loja
 
 ```txt
-!loja
-!loja categoria
-!shop
-!item id_do_item
-!comprar id_do_item
-!buy id_do_item
-!vender id_do_item
-!sell id_do_item
-!presentear @usuario id_do_item
-!gift @usuario id_do_item
-!inventario
-!inventario @usuario
-!inv
-!usar id_do_item
+!loja / !shop [categoria]
+!item id
+!comprar / !buy id
+!vender / !sell id
+!presentear / !gift @usuario id
+!inventario / !inv [@usuario]
+!usar id
 ```
 
-Categorias atuais:
-
-```txt
-consumivel
-colecionavel
-raro
-utilidade
-```
+Categorias: `consumivel`, `colecionavel`, `raro`, `utilidade`.
 
 ### Minigames
 
 ```txt
-!coinflip cara aposta
-!coinflip coroa aposta
-!moeda cara aposta
-!guess numero_de_1_a_5 aposta
-!adivinhar numero_de_1_a_5 aposta
-!minigames
-!minigames @usuario
+!coinflip cara|coroa aposta
+!moeda …
+!guess / !adivinhar 1-5 aposta
+!minigames [@usuario]
 ```
 
-As apostas usam pontos do usuario.
-
-### Reputacao
+### Reputação e casamento
 
 ```txt
 !rep @usuario
-!rankrep
-!reps
-```
-
-Cada usuario tem cooldown para dar reputacao.
-
-### Casamento
-
-```txt
+!rankrep / !reps
 !casar @usuario
-!aceitarcasamento
-!recusarcasamento
+!aceitarcasamento / !recusarcasamento
 !divorciar
-!casamento
-!casamento @usuario
+!casamento [@usuario]
 ```
 
 ### Utilidade
 
 ```txt
-!avatar
-!avatar @usuario
-!userinfo
-!userinfo @usuario
+!avatar [@usuario]
+!userinfo [@usuario]
 !serverinfo
 !say mensagem
 ```
 
-### Configuracoes
-
-Use `!config` ou `!painel` para ver o painel de configuracoes do servidor.
+### Configurações (Gerenciar Servidor)
 
 ```txt
-!config
-!painel
-!config logs #canal
-!config logs off
-!config autorole @cargo
-!config autorole off
-!config welcome on
-!config welcome off
-!config goodbye on
-!config goodbye off
+!config / !painel
+!config logs #canal | off
+!config autorole @cargo | off
+!config welcome on|off
+!config goodbye on|off
 ```
 
-Permissao necessaria para alterar configuracoes:
-
-```txt
-Gerenciar Servidor
-```
-
-### Boas-vindas, Despedida e Auto Cargo
-
-Boas-vindas e despedidas usam os canais do `.env`:
-
-```env
-WELCOME_CHANNEL_ID=id_do_canal_de_boas_vindas
-GOODBYE_CHANNEL_ID=id_do_canal_de_despedida
-```
-
-Se os IDs nao forem configurados, o bot tenta usar o canal de sistema do servidor.
-
-O auto cargo e configurado por servidor com:
-
-```txt
-!config autorole @cargo
-```
-
-### Moderacao
+### Moderação
 
 ```txt
 !ban @usuario motivo
-!unban id_do_usuario
+!unban id
 !kick @usuario motivo
 !timeout @usuario 10m motivo
 !untimeout @usuario
 !warn @usuario motivo
-!warnings
-!warnings @usuario
+!warnings [@usuario]
 !clearwarns @usuario
 !clear quantidade
 !slowmode segundos
-!lock
-!unlock
+!lock / !unlock
 !modlogs
 ```
 
-Permissoes que o bot pode precisar, dependendo do comando:
+---
+
+## Estrutura do projeto
 
 ```txt
-Banir membros
-Expulsar membros
-Moderar membros
-Gerenciar mensagens
-Gerenciar canais
-```
-
-Para ban, kick e timeout, o cargo do bot precisa estar acima do cargo da pessoa alvo.
-
-Os logs de moderacao ficam salvos localmente e podem ser enviados para um canal configurado com:
-
-```txt
-!config logs #canal
-```
-
-## Dados Locais
-
-Os dados de XP, pontos, reputacao, avisos, casamentos, inventario, conquistas, configuracoes e logs ficam em:
-
-```txt
-data/database.json
-```
-
-Essa pasta fica fora do Git pelo `.gitignore`.
-
-Tambem ficam fora do Git:
-
-```txt
-.env
-node_modules/
-nodejs/
-java/
-lavalink/
+Isolde/
+  src/                 # código do bot
+  scripts/             # start local e docker-up/down
+  lavalink/            # application.yml (+ jars locais, ignorados no git)
+  data/                # runtime (gitignored)
+  Dockerfile
+  docker-compose.yml
+  .env.example         # modelo sem segredos
+  .env                 # SEUS segredos (gitignored)
 ```

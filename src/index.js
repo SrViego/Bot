@@ -15,7 +15,8 @@ const { handleUtilityCommand } = require('./systems/utility');
 const { handleConfigCommand } = require('./systems/config');
 const { applyAutoRole } = require('./systems/autoroles');
 const { handleModLogCommand } = require('./systems/modlogs');
-const { applyGreenTheme, sendGreen } = require('./systems/theme');
+const { applyGreenTheme, createEmbed } = require('./systems/theme');
+const { sendWelcome, sendGoodbye } = require('./systems/welcome');
 const { handleLavalinkRawData, handleMusicCommand, initLavalink } = require('./systems/music');
 
 const token = process.env.DISCORD_TOKEN;
@@ -56,7 +57,11 @@ client.on(Events.GuildMemberAdd, async (member) => {
   const channel = await getTextChannel(member.guild, welcomeChannelId);
   if (!channel) return;
 
-  await sendGreen(channel, `Bem-vindo(a), ! Aproveite o servidor.`);
+  try {
+    await sendWelcome(channel, member);
+  } catch (err) {
+    console.error('Erro ao enviar boas-vindas:', err);
+  }
 });
 
 client.on(Events.GuildMemberRemove, async (member) => {
@@ -66,7 +71,11 @@ client.on(Events.GuildMemberRemove, async (member) => {
   const channel = await getTextChannel(member.guild, goodbyeChannelId);
   if (!channel) return;
 
-  await sendGreen(channel, ` saiu do servidor.`);
+  try {
+    await sendGoodbye(channel, member);
+  } catch (err) {
+    console.error('Erro ao enviar despedida:', err);
+  }
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -76,7 +85,20 @@ client.on(Events.MessageCreate, async (message) => {
   addXpFromMessage(message, data);
 
   if (message.content === '!ping') {
-    await message.reply('Pong!');
+    const sent = await message.reply({
+      title: '🏓 Pong!',
+      description: 'Medindo latência…'
+    });
+    const roundtrip = sent.createdTimestamp - message.createdTimestamp;
+    const ws = client.ws.ping;
+    await sent.edit({
+      embeds: [
+        createEmbed(
+          [`📡 **Round-trip:** \`${roundtrip}ms\``, `💓 **WebSocket:** \`${ws}ms\``].join('\n'),
+          { title: '🏓 Pong!' }
+        )
+      ]
+    });
     return;
   }
 

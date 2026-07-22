@@ -32,22 +32,42 @@ function playCoinflip(message, args, data) {
   const bet = parseBet(args[2], userData.points);
 
   if (!choice || !bet) {
-    message.reply('Use: !coinflip cara|coroa aposta');
+    message.reply({
+      title: '🪙 Coinflip',
+      description: 'Use: `!coinflip cara|coroa aposta`'
+    });
     return;
   }
 
   const result = Math.random() < 0.5 ? 'cara' : 'coroa';
   const won = choice === result;
+  const emoji = result === 'cara' ? '🟡' : '⚪';
   userData.minigames.lastCoinflipAt = Date.now();
 
   if (won) {
     userData.points += bet;
     userData.minigames.wins += 1;
-    message.reply(`Deu ${result}. Voce ganhou ${bet} pontos. Saldo: ${userData.points}.`);
+    message.reply({
+      title: '🪙 Deu ' + result + '!',
+      description: `${emoji} A moeda caiu em **${result}**.\n${message.author} apostou em **${choice}** e **ganhou**!`,
+      fields: [
+        { name: '💵 Lucro', value: `**+${bet}**`, inline: true },
+        { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+      ],
+      color: 0x2ecc71
+    });
   } else {
     userData.points -= bet;
     userData.minigames.losses += 1;
-    message.reply(`Deu ${result}. Voce perdeu ${bet} pontos. Saldo: ${userData.points}.`);
+    message.reply({
+      title: '🪙 Deu ' + result + '!',
+      description: `${emoji} A moeda caiu em **${result}**.\n${message.author} apostou em **${choice}** e **perdeu**.`,
+      fields: [
+        { name: '📉 Perda', value: `**-${bet}**`, inline: true },
+        { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+      ],
+      color: 0xe74c3c
+    });
   }
 
   saveData(data);
@@ -61,7 +81,10 @@ function playGuess(message, args, data) {
   const bet = parseBet(args[2], userData.points);
 
   if (!Number.isInteger(guess) || guess < 1 || guess > 5 || !bet) {
-    message.reply('Use: !guess numero_de_1_a_5 aposta');
+    message.reply({
+      title: '🎯 Adivinhe o número',
+      description: 'Use: `!guess numero_de_1_a_5 aposta`\nPrêmio: **4×** a aposta se acertar!'
+    });
     return;
   }
 
@@ -73,11 +96,27 @@ function playGuess(message, args, data) {
     const prize = bet * 4;
     userData.points += prize;
     userData.minigames.wins += 1;
-    message.reply(`O numero era ${result}. Voce acertou e ganhou ${prize} pontos. Saldo: ${userData.points}.`);
+    message.reply({
+      title: '🎯 Acertou!',
+      description: `O número secreto era **${result}**.\n${message.author} chutou **${guess}** e mandou bem!`,
+      fields: [
+        { name: '💵 Prêmio', value: `**+${prize}** (4×)`, inline: true },
+        { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+      ],
+      color: 0x2ecc71
+    });
   } else {
     userData.points -= bet;
     userData.minigames.losses += 1;
-    message.reply(`O numero era ${result}. Voce perdeu ${bet} pontos. Saldo: ${userData.points}.`);
+    message.reply({
+      title: '🎯 Errou!',
+      description: `O número secreto era **${result}**.\n${message.author} chutou **${guess}**.`,
+      fields: [
+        { name: '📉 Perda', value: `**-${bet}**`, inline: true },
+        { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+      ],
+      color: 0xe74c3c
+    });
   }
 
   saveData(data);
@@ -91,33 +130,44 @@ function showMinigameStats(message, data) {
   const total = wins + losses;
   const rate = total === 0 ? 0 : Math.round((wins / total) * 100);
 
-  message.reply(`${target} tem ${wins} vitoria(s), ${losses} derrota(s) e ${rate}% de aproveitamento nos minigames.`);
+  message.reply({
+    title: '🎮 Minigames',
+    description: `${target}`,
+    thumbnail: target.displayAvatarURL({ size: 128 }),
+    fields: [
+      { name: '🏆 Vitórias', value: `**${wins}**`, inline: true },
+      { name: '💀 Derrotas', value: `**${losses}**`, inline: true },
+      { name: '📊 Aproveitamento', value: `**${rate}%**`, inline: true }
+    ]
+  });
 }
 
 function checkCooldown(message, userData, field) {
   const lastPlayedAt = userData.minigames[field] ?? 0;
   const now = Date.now();
-
-  if (lastPlayedAt && now - lastPlayedAt < gameCooldown) {
-    const seconds = Math.ceil((gameCooldown - (now - lastPlayedAt)) / 1000);
-    message.reply(`Espere ${seconds}s antes de jogar esse minigame de novo.`);
+  if (now - lastPlayedAt < gameCooldown) {
+    const secs = Math.ceil((gameCooldown - (now - lastPlayedAt)) / 1000);
+    message.reply({
+      title: '⏳ Calma aí',
+      description: `Espere **${secs}s** para jogar de novo.`,
+      color: 0xf1c40f
+    });
     return false;
   }
-
   return true;
 }
 
 function normalizeCoin(value) {
   if (!value) return null;
-  const normalized = value.toLowerCase();
-  if (['cara', 'heads', 'h'].includes(normalized)) return 'cara';
-  if (['coroa', 'tails', 't'].includes(normalized)) return 'coroa';
+  const v = value.toLowerCase();
+  if (v === 'cara' || v === 'coroa') return v;
   return null;
 }
 
-function parseBet(value, points) {
-  const bet = Number(value);
-  if (!Number.isInteger(bet) || bet < 1 || bet > 500 || bet > points) return null;
+function parseBet(raw, points) {
+  const bet = Number(raw);
+  if (!Number.isInteger(bet) || bet <= 0) return null;
+  if (bet > points) return null;
   return bet;
 }
 

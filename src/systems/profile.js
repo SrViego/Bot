@@ -2,6 +2,7 @@ const { getGuildData, getUserData } = require('./database');
 const { getAchievementProgress } = require('./achievements');
 const { shopItems } = require('./shop');
 const { getNeededXp } = require('./xp');
+const { progressBar } = require('./theme');
 
 function handleProfileCommand(message, data) {
   const command = message.content.trim().split(/\s+/)[0].toLowerCase();
@@ -15,36 +16,71 @@ function handleProfileCommand(message, data) {
   const inventory = formatInventory(userData.inventory);
   const stats = userData.stats ?? {};
   const minigames = userData.minigames ?? {};
+  const bar = progressBar(userData.xp, neededXp, 12);
 
-  const lines = [
-    `**Perfil de ${target.tag}**`,
-    `Nivel: **${userData.level}** (${userData.xp}/${neededXp} XP)`,
-    `Pontos: **${userData.points}**`,
-    `Reputacao: **${userData.rep ?? 0}**`,
-    `Daily: sequencia **${stats.dailyStreak ?? 0}** | melhor **${stats.bestDailyStreak ?? 0}**`,
-    `Minigames: **${minigames.wins ?? 0}** vitoria(s) | **${minigames.losses ?? 0}** derrota(s)`,
-    `Conquistas: **${getAchievementProgress(userData)}**`,
-    `Casamento: ${partnerId ? `<@${partnerId}>` : 'solteiro(a)'}`,
-    `Inventario: ${inventory}`
-  ];
-
-  message.reply(lines.join('\n'));
+  message.reply({
+    title: `📜 Perfil de ${target.username}`,
+    description: `${target}`,
+    thumbnail: target.displayAvatarURL({ size: 256 }),
+    fields: [
+      {
+        name: '⭐ Nível',
+        value: `**${userData.level}**\n\`${bar}\`\n${userData.xp}/${neededXp} XP`,
+        inline: true
+      },
+      {
+        name: '💰 Pontos',
+        value: `**${userData.points}**`,
+        inline: true
+      },
+      {
+        name: '💎 Reputação',
+        value: `**${userData.rep ?? 0}**`,
+        inline: true
+      },
+      {
+        name: '📅 Daily',
+        value: `Sequência **${stats.dailyStreak ?? 0}**\nMelhor **${stats.bestDailyStreak ?? 0}**`,
+        inline: true
+      },
+      {
+        name: '🎮 Minigames',
+        value: `🏆 ${minigames.wins ?? 0} · 💀 ${minigames.losses ?? 0}`,
+        inline: true
+      },
+      {
+        name: '🏅 Conquistas',
+        value: `**${getAchievementProgress(userData)}**`,
+        inline: true
+      },
+      {
+        name: '💍 Casamento',
+        value: partnerId ? `<@${partnerId}>` : '*solteiro(a)*',
+        inline: false
+      },
+      {
+        name: '🎒 Inventário',
+        value: inventory,
+        inline: false
+      }
+    ]
+  });
   return true;
 }
 
 function formatInventory(inventory = {}) {
   const entries = Object.entries(inventory)
     .filter(([, amount]) => amount > 0)
-    .slice(0, 6);
+    .slice(0, 8);
 
-  if (entries.length === 0) return 'vazio';
+  if (entries.length === 0) return '*vazio*';
 
   return entries
     .map(([itemId, amount]) => {
       const item = shopItems.find((shopItem) => shopItem.id === itemId);
-      return `${item?.name ?? itemId} x${amount}`;
+      return `• **${item?.name ?? itemId}** ×${amount}`;
     })
-    .join(', ');
+    .join('\n');
 }
 
 module.exports = {

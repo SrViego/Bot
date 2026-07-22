@@ -2,31 +2,141 @@ const { EmbedBuilder } = require('discord.js');
 
 const theme = {
   color: 0x2ecc71,
+  colorAccent: 0x1abc9c,
+  colorWarn: 0xf1c40f,
+  colorError: 0xe74c3c,
+  colorInfo: 0x3498db,
   name: 'Isolde',
-  footer: 'Hallownest Bots'
+  footer: '✦ Hallownest Bots · Isolde',
+  // GIFs padrao (podem ser sobrescritos no .env)
+  welcomeGifs: [
+    'https://media.giphy.com/media/ASd0Ukj0y3qMM/giphy.gif',
+    'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif',
+    'https://media.giphy.com/media/od5H3PmEG5EVq/giphy.gif',
+    'https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif'
+  ],
+  goodbyeGifs: [
+    'https://media.giphy.com/media/26u4cqiYI30juCOGY/giphy.gif',
+    'https://media.giphy.com/media/l2R0eYcNq9rJUsVAA/giphy.gif',
+    'https://media.giphy.com/media/3oz8xIsloV7zOmt81G/giphy.gif',
+    'https://media.giphy.com/media/jUwpNzg9IcyrK/giphy.gif'
+  ]
 };
 
 const patchedMessages = new WeakSet();
 const patchedChannels = new WeakSet();
 
-function createEmbed(description, options = {}) {
-  const embed = new EmbedBuilder()
-    .setColor(options.color ?? theme.color)
-    .setDescription(description)
-    .setTimestamp();
+function pickRandom(list) {
+  if (!list?.length) return null;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
+function progressBar(current, max, size = 10) {
+  const safeMax = Math.max(1, max);
+  const ratio = Math.min(1, Math.max(0, current / safeMax));
+  const filled = Math.round(ratio * size);
+  const empty = size - filled;
+  return `${'█'.repeat(filled)}${'░'.repeat(empty)} ${Math.floor(ratio * 100)}%`;
+}
+
+/**
+ * options: title, description, fields, thumbnail, image, author, footer, color, timestamp
+ * description can be string or null
+ */
+function createEmbed(description, options = {}) {
+  const embed = new EmbedBuilder().setColor(options.color ?? theme.color);
+
+  if (description) embed.setDescription(description);
   if (options.title) embed.setTitle(options.title);
-  if (options.footer !== false) embed.setFooter({ text: options.footer ?? theme.footer });
+  if (options.url) embed.setURL(options.url);
+
+  if (options.author) {
+    const author =
+      typeof options.author === 'string'
+        ? { name: options.author }
+        : options.author;
+    embed.setAuthor(author);
+  }
+
+  if (options.thumbnail) embed.setThumbnail(options.thumbnail);
+  if (options.image) embed.setImage(options.image);
+
+  if (Array.isArray(options.fields) && options.fields.length) {
+    embed.addFields(
+      options.fields.map((f) => ({
+        name: f.name,
+        value: String(f.value).slice(0, 1024) || '—',
+        inline: Boolean(f.inline)
+      }))
+    );
+  }
+
+  if (options.footer !== false) {
+    const footer =
+      typeof options.footer === 'object' && options.footer
+        ? options.footer
+        : { text: options.footer ?? theme.footer };
+    embed.setFooter(footer);
+  }
+
+  if (options.timestamp !== false) {
+    embed.setTimestamp(options.timestamp === true || options.timestamp == null ? new Date() : options.timestamp);
+  }
 
   return embed;
 }
 
-function asThemedPayload(payload) {
-  if (typeof payload !== 'string') return payload;
+function buildPayload(options = {}) {
+  // string curta → embed simples
+  if (typeof options === 'string') {
+    return { embeds: [createEmbed(options)] };
+  }
 
-  return {
-    embeds: [createEmbed(payload)]
-  };
+  const embed = createEmbed(options.description ?? null, options);
+  const payload = { embeds: [embed] };
+
+  if (options.content) payload.content = options.content;
+  if (options.components) payload.components = options.components;
+  if (options.files) payload.files = options.files;
+  if (options.allowedMentions) payload.allowedMentions = options.allowedMentions;
+  // permitir marcar usuarios nas boas-vindas
+  if (options.mentionUserId) {
+    payload.content = options.content ?? `<@${options.mentionUserId}>`;
+    payload.allowedMentions = options.allowedMentions ?? {
+      users: [options.mentionUserId],
+      roles: [],
+      repliedUser: false
+    };
+  }
+
+  return payload;
+}
+
+function asThemedPayload(payload) {
+  if (typeof payload === 'string') {
+    return buildPayload(payload);
+  }
+
+  if (!payload || typeof payload !== 'object') return payload;
+
+  // ja e payload rico do discord.js
+  if (payload.embeds || payload.files || payload.components || payload.poll) {
+    return payload;
+  }
+
+  // objeto de opcoes do nosso helper
+  if (
+    payload.title ||
+    payload.description ||
+    payload.fields ||
+    payload.thumbnail ||
+    payload.image ||
+    payload.mentionUserId
+  ) {
+    return buildPayload(payload);
+  }
+
+  return payload;
 }
 
 function applyGreenTheme(message) {
@@ -50,9 +160,18 @@ async function sendGreen(channel, payload) {
   return channel.send(asThemedPayload(payload));
 }
 
+/** Atalho: message.reply com embed rico */
+function replyPretty(message, options) {
+  return message.reply(buildPayload(options));
+}
+
 module.exports = {
   applyGreenTheme,
   sendGreen,
   createEmbed,
+  buildPayload,
+  replyPretty,
+  progressBar,
+  pickRandom,
   theme
 };

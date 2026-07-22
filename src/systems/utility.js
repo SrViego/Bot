@@ -32,67 +32,141 @@ function handleUtilityCommand(message) {
 
 function showAvatar(message) {
   const target = message.mentions.users.first() ?? message.author;
-  message.reply(target.displayAvatarURL({ size: 1024, extension: 'png' }));
+  const url = target.displayAvatarURL({ size: 1024, extension: 'png' });
+
+  message.reply({
+    title: `🖼️ Avatar de ${target.username}`,
+    description: `[Abrir em tamanho cheio](${url})`,
+    image: url,
+    thumbnail: target.displayAvatarURL({ size: 128 })
+  });
 }
 
 function showUserInfo(message) {
   const member = message.mentions.members.first() ?? message.member;
-  const joinedAt = member.joinedAt ? member.joinedAt.toLocaleDateString('pt-BR') : 'desconhecido';
-  const createdAt = member.user.createdAt.toLocaleDateString('pt-BR');
+  const user = member.user;
   const roles = member.roles.cache
     .filter((role) => role.id !== message.guild.id)
     .sort((a, b) => b.position - a.position)
-    .first(8)
+    .first(10)
     .map((role) => `${role}`)
-    .join(', ') || 'nenhum';
+    .join(', ') || '*nenhum*';
 
-  message.reply([
-    `**Usuario:** ${member.user.tag}`,
-    `ID: ${member.id}`,
-    `Conta criada: ${createdAt}`,
-    `Entrou no servidor: ${joinedAt}`,
-    `Cargos: ${roles}`
-  ].join('\n'));
+  message.reply({
+    title: `👤 ${user.tag}`,
+    thumbnail: user.displayAvatarURL({ size: 256 }),
+    fields: [
+      { name: '🆔 ID', value: `\`${member.id}\``, inline: true },
+      { name: '🤖 Bot?', value: user.bot ? 'Sim' : 'Não', inline: true },
+      {
+        name: '📅 Conta criada',
+        value: `<t:${Math.floor(user.createdTimestamp / 1000)}:D> (<t:${Math.floor(user.createdTimestamp / 1000)}:R>)`,
+        inline: false
+      },
+      {
+        name: '🚪 Entrou no servidor',
+        value: member.joinedTimestamp
+          ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:D> (<t:${Math.floor(member.joinedTimestamp / 1000)}:R>)`
+          : '—',
+        inline: false
+      },
+      { name: '🎭 Cargos', value: roles.slice(0, 1000), inline: false }
+    ],
+    color: member.displayColor || undefined
+  });
 }
 
 function showServerInfo(message) {
   const guild = message.guild;
-  const createdAt = guild.createdAt.toLocaleDateString('pt-BR');
+  const icon = guild.iconURL({ size: 256 });
 
-  message.reply([
-    `**Servidor:** ${guild.name}`,
-    `ID: ${guild.id}`,
-    `Dono: <@${guild.ownerId}>`,
-    `Membros: ${guild.memberCount}`,
-    `Canais: ${guild.channels.cache.size}`,
-    `Cargos: ${guild.roles.cache.size}`,
-    `Criado em: ${createdAt}`
-  ].join('\n'));
+  message.reply({
+    title: `🏰 ${guild.name}`,
+    thumbnail: icon ?? undefined,
+    image: guild.bannerURL({ size: 512 }) ?? undefined,
+    fields: [
+      { name: '🆔 ID', value: `\`${guild.id}\``, inline: true },
+      { name: '👑 Dono', value: `<@${guild.ownerId}>`, inline: true },
+      { name: '👥 Membros', value: String(guild.memberCount), inline: true },
+      { name: '💬 Canais', value: String(guild.channels.cache.size), inline: true },
+      { name: '🎭 Cargos', value: String(guild.roles.cache.size), inline: true },
+      { name: '😀 Emojis', value: String(guild.emojis.cache.size), inline: true },
+      {
+        name: '📅 Criado em',
+        value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D> (<t:${Math.floor(guild.createdTimestamp / 1000)}:R>)`,
+        inline: false
+      }
+    ]
+  });
 }
 
 function say(message, args) {
   const text = args.slice(1).join(' ');
 
   if (!text) {
-    message.reply('Use: !say mensagem');
+    message.reply({
+      title: '💬 !say',
+      description: 'Use: `!say mensagem`\nEu apago seu comando e repito a mensagem no canal.'
+    });
     return;
   }
 
   message.delete().catch(() => null);
-  message.channel.send(text.slice(0, 1800));
+  message.channel.send({
+    title: '📢 Anúncio',
+    description: text.slice(0, 1800),
+    footer: { text: `pedido por ${message.author.tag}` }
+  });
 }
 
 function showHelp(message) {
-  message.reply([
-    '**Comandos principais**',
-    'Perfil: !perfil, !conquistas, !rep @usuario, !rankrep',
-    'Economia: !pontos, !daily, !loja, !comprar id, !inventario, !usar id',
-    'Minigames: !coinflip cara|coroa aposta, !guess 1-5 aposta, !minigames',
-    'Utilidade: !avatar, !userinfo, !serverinfo, !say, !ping',
-    'Musica: !play, !skip, !stop, !queue, !pause, !resume',
-    'Config: !config, !config logs #canal, !config autorole @cargo',
-    'Moderacao: !ban, !kick, !timeout, !warn, !clear, !modlogs'
-  ].join('\n'));
+  message.reply({
+    title: '📗 Guia da Isolde',
+    description: 'Comandos principais — digite com `!` no começo.',
+    fields: [
+      {
+        name: '🌿 Perfil & social',
+        value: '`!perfil` `!conquistas` `!rep @user` `!rankrep` `!casar` `!casamento`',
+        inline: false
+      },
+      {
+        name: '💰 Economia',
+        value: '`!pontos` `!daily` `!loja` `!comprar id` `!inventario` `!usar id` `!rankpontos`',
+        inline: false
+      },
+      {
+        name: '⭐ XP',
+        value: '`!xp` `!level` `!rankxp`',
+        inline: false
+      },
+      {
+        name: '🎲 Minigames',
+        value: '`!coinflip cara|coroa aposta` `!guess 1-5 aposta` `!minigames`',
+        inline: false
+      },
+      {
+        name: '🎵 Música',
+        value: '`!play` `!skip` `!stop` `!queue` `!pause` `!resume` `!volume` `!np`',
+        inline: false
+      },
+      {
+        name: '🛠️ Utilidade',
+        value: '`!avatar` `!userinfo` `!serverinfo` `!say` `!ping` `!ajuda`',
+        inline: false
+      },
+      {
+        name: '⚙️ Config (Gerenciar Servidor)',
+        value: '`!config` · `!config logs #canal` · `!config autorole @cargo` · `!config welcome on|off` · `!config goodbye on|off`',
+        inline: false
+      },
+      {
+        name: '🛡️ Moderação',
+        value: '`!ban` `!kick` `!timeout` `!warn` `!clear` `!lock` `!unlock` `!modlogs`',
+        inline: false
+      }
+    ],
+    thumbnail: message.client.user.displayAvatarURL({ size: 128 })
+  });
 }
 
 module.exports = {

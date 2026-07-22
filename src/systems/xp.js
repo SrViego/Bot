@@ -1,5 +1,6 @@
 const { getUserData, saveData } = require("./database");
 const { grantAchievements, notifyAchievements } = require("./achievements");
+const { progressBar } = require("./theme");
 
 const xpCooldown = 60 * 1000;
 
@@ -24,7 +25,12 @@ function addXpFromMessage(message, data) {
     userData.level += 1;
     if (userData.level >= 5) unlocked.push(...grantAchievements(userData, ["level_5"]));
     if (userData.level >= 10) unlocked.push(...grantAchievements(userData, ["level_10"]));
-    message.channel.send(`${message.author} subiu para o nivel ${userData.level}.`);
+    message.channel.send({
+      title: '🌟 Level up!',
+      description: `${message.author} alcançou o **nível ${userData.level}**!`,
+      thumbnail: message.author.displayAvatarURL({ size: 128 }),
+      color: 0xf1c40f
+    });
   }
 
   notifyAchievements(message, unlocked);
@@ -51,8 +57,18 @@ function showXp(message, data) {
   const target = message.mentions.users.first() ?? message.author;
   const userData = getUserData(data, message.guild.id, target.id);
   const neededXp = getNeededXp(userData.level);
+  const bar = progressBar(userData.xp, neededXp, 12);
 
-  message.reply(`${target} esta no nivel ${userData.level} com ${userData.xp}/${neededXp} XP.`);
+  message.reply({
+    title: '⭐ Experiência',
+    description: `${target}`,
+    thumbnail: target.displayAvatarURL({ size: 128 }),
+    fields: [
+      { name: 'Nível', value: `**${userData.level}**`, inline: true },
+      { name: 'XP', value: `**${userData.xp}** / ${neededXp}`, inline: true },
+      { name: 'Progresso', value: `\`${bar}\``, inline: false }
+    ]
+  });
 }
 
 function showXpRank(message, data) {
@@ -65,16 +81,23 @@ function showXpRank(message, data) {
     .slice(0, 10);
 
   if (ranking.length === 0) {
-    message.reply('Ainda nao tem ranking de XP.');
+    message.reply({
+      title: '🏆 Ranking de XP',
+      description: 'Ainda não há ninguém no ranking.'
+    });
     return;
   }
 
+  const medals = ['🥇', '🥈', '🥉'];
   const lines = ranking.map(([userId, userData], index) => {
-    return `${index + 1}. <@${userId}> - nivel ${userData.level} (${userData.xp} XP)`;
+    const medal = medals[index] ?? `**${index + 1}.**`;
+    return `${medal} <@${userId}> — nv **${userData.level}** · ${userData.xp} XP`;
   });
 
-  message.reply(`Ranking de XP:
-${lines.join('\n')}`);
+  message.reply({
+    title: '🏆 Ranking de XP',
+    description: lines.join('\n')
+  });
 }
 
 function getNeededXp(level) {

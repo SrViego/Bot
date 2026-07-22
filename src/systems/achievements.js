@@ -75,8 +75,19 @@ function achievementLine(achievementId) {
 function notifyAchievements(message, achievementIds) {
   if (!achievementIds.length) return;
 
-  const lines = achievementIds.map(achievementLine).join("\n");
-  message.channel.send(`[Conquista] Nova conquista para ${message.author}:\n${lines}`).catch(() => null);
+  const lines = achievementIds.map((id) => {
+    const a = ACHIEVEMENTS[id];
+    return a ? `🏅 **${a.name}**\n*${a.description}*` : id;
+  });
+
+  message.channel
+    .send({
+      title: "🎉 Nova conquista!",
+      description: `${message.author}\n\n${lines.join("\n\n")}`,
+      thumbnail: message.author.displayAvatarURL({ size: 128 }),
+      color: 0xf1c40f
+    })
+    .catch(() => null);
 }
 
 function getAchievementList(userData) {
@@ -104,19 +115,27 @@ function handleAchievementsCommand(message, data) {
   const achievements = getAchievementList(userData);
 
   if (achievements.length === 0) {
-    message.reply(`${target} ainda nao desbloqueou conquistas. Progresso: ${getAchievementProgress(userData)}.`);
+    message.reply({
+      title: "🏅 Conquistas",
+      description: `${target} ainda não desbloqueou conquistas.\nProgresso: **${getAchievementProgress(userData)}**`,
+      thumbnail: target.displayAvatarURL({ size: 128 })
+    });
     return true;
   }
 
   const lines = achievements
     .slice(0, 12)
-    .map((achievement) => `**${achievement.name}** - ${achievement.description}`);
+    .map((a) => `🏅 **${a.name}**\n*${a.description}*`);
 
   if (achievements.length > 12) {
-    lines.push(`... e mais ${achievements.length - 12}`);
+    lines.push(`… e mais **${achievements.length - 12}**`);
   }
 
-  message.reply(`Conquistas de ${target} (${getAchievementProgress(userData)}):\n${lines.join("\n")}`);
+  message.reply({
+    title: `🏅 Conquistas de ${target.username}`,
+    description: `${target} · progresso **${getAchievementProgress(userData)}**\n\n${lines.join("\n\n")}`,
+    thumbnail: target.displayAvatarURL({ size: 128 })
+  });
   return true;
 }
 

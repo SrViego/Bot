@@ -27,7 +27,15 @@ function showPoints(message, data) {
   const target = message.mentions.users.first() ?? message.author;
   const userData = getUserData(data, message.guild.id, target.id);
 
-  message.reply(`${target} tem ${userData.points} pontos.`);
+  message.reply({
+    title: '💰 Pontos',
+    description: `${target} possui **${userData.points}** pontos.`,
+    thumbnail: target.displayAvatarURL({ size: 128 }),
+    fields: [
+      { name: '🔥 Daily streak', value: String(userData.stats?.dailyStreak ?? 0), inline: true },
+      { name: '🏅 Melhor streak', value: String(userData.stats?.bestDailyStreak ?? 0), inline: true }
+    ]
+  });
 }
 
 function claimDaily(message, data) {
@@ -39,7 +47,11 @@ function claimDaily(message, data) {
   if (userData.lastDailyAt && now - userData.lastDailyAt < oneDay) {
     const remaining = oneDay - (now - userData.lastDailyAt);
     const hours = Math.ceil(remaining / (60 * 60 * 1000));
-    message.reply(`Voce ja pegou seus pontos diarios. Tente de novo em cerca de ${hours}h.`);
+    message.reply({
+      title: '⏰ Daily já resgatado',
+      description: `Você já pegou seus pontos hoje.\nVolte em cerca de **${hours}h**.`,
+      color: 0xf1c40f
+    });
     return;
   }
 
@@ -59,9 +71,17 @@ function claimDaily(message, data) {
   if (userData.points >= 1000) unlocked.push(...grantAchievements(userData, ["wealthy"]));
 
   saveData(data);
-  message.reply(
-    `Voce recebeu ${reward} pontos diarios. Sequencia atual: ${userData.stats.dailyStreak} dia(s).`
-  );
+  message.reply({
+    title: '🎁 Daily resgatado!',
+    description: `${message.author} abriu o baú diário.`,
+    thumbnail: message.author.displayAvatarURL({ size: 128 }),
+    fields: [
+      { name: '💰 Recompensa', value: `**+${reward}** pontos`, inline: true },
+      { name: '🔥 Sequência', value: `**${userData.stats.dailyStreak}** dia(s)`, inline: true },
+      { name: '✨ Bônus streak', value: `+${streakBonus}`, inline: true },
+      { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+    ]
+  });
   notifyAchievements(message, unlocked);
 }
 
@@ -72,16 +92,23 @@ function showPointsRank(message, data) {
     .slice(0, 10);
 
   if (ranking.length === 0) {
-    message.reply('Ainda nao tem ranking de pontos.');
+    message.reply({
+      title: '🏆 Ranking de pontos',
+      description: 'Ainda não há ninguém no ranking.'
+    });
     return;
   }
 
+  const medals = ['🥇', '🥈', '🥉'];
   const lines = ranking.map(([userId, userData], index) => {
-    return `${index + 1}. <@${userId}> - ${userData.points} pontos`;
+    const medal = medals[index] ?? `**${index + 1}.**`;
+    return `${medal} <@${userId}> — **${userData.points}** pts`;
   });
 
-  message.reply(`Ranking de pontos:
-${lines.join('\n')}`);
+  message.reply({
+    title: '🏆 Ranking de pontos',
+    description: lines.join('\n')
+  });
 }
 
 module.exports = {

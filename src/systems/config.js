@@ -43,21 +43,43 @@ function handleConfigCommand(message, data) {
 function showConfigPanel(message, data) {
   const guildData = getGuildData(data, message.guild.id);
   const config = guildData.config;
-  const lines = [
-    '**Painel de configuracoes**',
-    `Logs: ${config.logChannelId ? `<#${config.logChannelId}>` : 'desativado'}`,
-    `Auto cargo: ${config.autoRoleId ? `<@&${config.autoRoleId}>` : 'desativado'}`,
-    `Boas-vindas: ${config.welcomeEnabled ? 'on' : 'off'}`,
-    `Despedidas: ${config.goodbyeEnabled ? 'on' : 'off'}`,
-    '',
-    'Comandos:',
-    '!config logs #canal | off',
-    '!config autorole @cargo | off',
-    '!config welcome on|off',
-    '!config goodbye on|off'
-  ];
 
-  message.reply(lines.join('\n'));
+  message.reply({
+    title: '⚙️ Painel de configurações',
+    description: `Servidor: **${message.guild.name}**`,
+    fields: [
+      {
+        name: '📋 Logs',
+        value: config.logChannelId ? `<#${config.logChannelId}>` : '*desativado*',
+        inline: true
+      },
+      {
+        name: '🎭 Auto cargo',
+        value: config.autoRoleId ? `<@&${config.autoRoleId}>` : '*desativado*',
+        inline: true
+      },
+      {
+        name: '🌿 Boas-vindas',
+        value: config.welcomeEnabled ? '✅ on' : '❌ off',
+        inline: true
+      },
+      {
+        name: '🍂 Despedidas',
+        value: config.goodbyeEnabled ? '✅ on' : '❌ off',
+        inline: true
+      },
+      {
+        name: '🛠️ Comandos',
+        value: [
+          '`!config logs #canal | off`',
+          '`!config autorole @cargo | off`',
+          '`!config welcome on|off`',
+          '`!config goodbye on|off`'
+        ].join('\n'),
+        inline: false
+      }
+    ]
+  });
 }
 
 function setLogChannel(message, args, data) {

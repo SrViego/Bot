@@ -4,11 +4,14 @@ server:
 
 lavalink:
   plugins:
+    # Baixa/atualiza o plugin YouTube (YouTube oficial do Lavalink quebra com frequência)
     - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.1"
+      repository: "https://maven.lavalink.dev/releases"
       snapshot: false
   server:
     password: "youshallnotpass"
     sources:
+      # youtube nativo OFF — usamos o plugin (youtube-source)
       youtube: false
       bandcamp: true
       soundcloud: true
@@ -27,6 +30,13 @@ lavalink:
       rotation: true
       channelMix: true
       lowPass: true
+    # buffer um pouco maior ajuda em redes instáveis
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: MEDIUM
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
 
 plugins:
   youtube:
@@ -34,12 +44,26 @@ plugins:
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
+    # Ordem importa: tenta cada client até um conseguir o stream
+    # (YouTube bloqueia WEB/MUSIC com frequência)
     clients:
       - MUSIC
-      - WEB
-      - WEBEMBEDDED
       - ANDROID_VR
+      - ANDROID_MUSIC
+      - WEB
+      - MWEB
+      - WEBEMBEDDED
+      - TV
+      - TVHTML5EMBEDDED
+      - MEDIA_CONNECT
+      - IOS
+    # Se muitas faixas falharem, veja oauth no README do youtube-source
+    # oauth:
+    #   enabled: false
+
 logging:
   level:
     root: INFO
     lavalink: INFO
+    # mais detalhe no YouTube se precisar debugar:
+    # "dev.lavalink.youtube": DEBUG

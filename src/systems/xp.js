@@ -1,4 +1,4 @@
-const { getUserData, saveData } = require("./database");
+const { getUserData, saveData, hasActiveEffect } = require("./database");
 const { grantAchievements, notifyAchievements } = require("./achievements");
 const { progressBar } = require("./theme");
 
@@ -15,7 +15,16 @@ function addXpFromMessage(message, data) {
   userData.stats.messages += 1;
   const unlocked = grantAchievements(userData, ["first_message"]);
 
-  const gainedXp = Math.floor(Math.random() * 8) + 8;
+  let gainedXp = Math.floor(Math.random() * 8) + 8;
+  // Buff da loja (lanterna / poção)
+  if (hasActiveEffect(userData, "xpBoostUntil")) {
+    const mult = Number(userData.effects.xpBoostMult) || 1.5;
+    gainedXp = Math.max(1, Math.floor(gainedXp * mult));
+  } else if (userData.effects?.xpBoostUntil) {
+    // expirou: limpa
+    delete userData.effects.xpBoostUntil;
+    delete userData.effects.xpBoostMult;
+  }
   userData.xp += gainedXp;
   userData.lastXpAt = now;
 

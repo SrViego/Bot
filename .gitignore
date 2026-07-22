@@ -1,28 +1,25 @@
-# Dependencias e runtime local
 node_modules/
 npm-debug.log*
 *.log
 
-# Segredos — NUNCA commitar
 .env
 .env.local
 .env.*.local
 !.env.example
 
-# Dados do bot (XP, loja, etc.)
-data/
+# runtime em data/ — versiona só o estático
+data/*
+!data/.gitkeep
+!data/pokemon-data.json
 
-# Binarios portateis de outro SO (nao usamos no NixOS/Docker)
+# binários portáteis / pesados (ficam no PC, fora do Git)
 nodejs/
 java/
-
-# Lavalink: jars e plugins sao baixados localmente; config pode ir pro git
 lavalink/*.jar
 lavalink/**/*.jar
 lavalink/plugins/*
 !lavalink/plugins/.gitkeep
 
-# OS / editor
 .DS_Store
 Thumbs.db
 *.swp

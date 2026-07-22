@@ -1,66 +1,96 @@
 # Isolde Bot
 
-Bot de Discord em Node.js (`discord.js`), com música via Lavalink, economia, loja, XP, sistemas sociais, moderação, configurações por servidor e embeds verdes.
+Bot de Discord em **Node.js** (`discord.js`) com:
 
-Repositório: [SrViego/Isolde-bot](https://github.com/SrViego/Isolde-bot)
+- Música (Lavalink + YouTube)
+- Economia, loja, XP, social, minigames e moderação
+- Boas-vindas / despedida com menção e GIF
+- **Pokémon** (Pokédex nacional ~1025 spp., loja 🪙, captura e PvP em **canal exclusivo**)
 
----
-
-## Segurança (importante)
-
-**Nunca** coloque no Git / GitHub:
-
-| Arquivo | Motivo |
-|---------|--------|
-| `.env` | Token do bot e IDs sensíveis |
-| `data/` | XP, pontos, avisos, inventário do servidor |
-| `node_modules/` | Dependências (instala com npm) |
-| `lavalink/*.jar` e `plugins/*.jar` | Binários grandes / locais |
-| Pastas `nodejs/` e `java/` | Runtime portátil de outro SO |
-
-O que **pode** ir pro Git: código em `src/`, `package.json`, `Dockerfile`, `docker-compose.yml`, `.env.example`, `lavalink/application.yml` (senha padrão de exemplo).
-
-Se o token vazar: [Discord Developer Portal](https://discord.com/developers/applications) → Bot → **Reset Token**.
+Repo: [SrViego/Isolde-bot](https://github.com/SrViego/Isolde-bot)
 
 ---
 
-## Requisitos no Discord
+## O que NÃO vai no Git (fica só no teu PC)
 
-No [Developer Portal](https://discord.com/developers/applications), ative:
+| Pasta / arquivo | Por quê |
+|-----------------|---------|
+| `.env` | Token e segredos |
+| `data/database.json` | Dados dos usuários (XP, inventário, times…) |
+| `nodejs/` e `java/` | Binários portáteis grandes (não use no NixOS) |
+| `lavalink/*.jar` e plugins `.jar` | Binários grandes; Docker baixa o Lavalink |
+| `node_modules/` | Instala com `npm install` |
+
+**Sim:** esses arquivos podem continuar no teu computador. Só **não são enviados** ao GitHub (`.gitignore`).
+
+---
+
+## Estrutura
 
 ```txt
-Message Content Intent
-Server Members Intent
+Isolde/
+  src/                 # código do bot
+    systems/           # loja, XP, pokemon.js, help.js, music.js…
+  data/
+    database.json      # runtime (local, não versionado)
+    pokemon-data.json  # Pokédex (versionada no Git)
+  lavalink/
+    application.yml    # config (no Git)
+    Lavalink.jar       # só se rodar Lavalink local (não no Git)
+    plugins/           # jar do YouTube local (opcional; não no Git)
+  scripts/             # docker-up, start-bot…
+  Dockerfile
+  docker-compose.yml
+  .env.example         # modelo
+  .env                 # teus segredos (local)
 ```
-
-Permissões úteis no servidor: Ver canal, Conectar, Falar, Banir/Expulsar/Moderar membros, Gerenciar mensagens/canais (conforme os comandos que for usar).
 
 ---
 
 ## Forma recomendada: Docker
 
-Não precisa instalar Node nem Java no sistema. Só **Docker** + arquivo `.env`.
+Não precisa instalar Node/Java no sistema. Só **Docker**.
 
-### 1. Clone e configure
+### 1. Clonar e configurar
 
 ```sh
 git clone https://github.com/SrViego/Isolde-bot.git
 cd Isolde-bot
 
 cp .env.example .env
-# edite .env e coloque o DISCORD_TOKEN real
 ```
 
-### 2. Plugin YouTube do Lavalink (música)
+Edite o `.env`:
 
-O compose usa a imagem oficial do Lavalink e a pasta `lavalink/plugins/`.  
-Coloque o JAR do plugin (ex.: `youtube-plugin-….jar`) em:
+```env
+DISCORD_TOKEN=cole_o_token_do_bot
 
-```txt
-lavalink/plugins/
+# opcional
+WELCOME_CHANNEL_ID=
+GOODBYE_CHANNEL_ID=
+WELCOME_GIF_URL=
+GOODBYE_GIF_URL=
+
+# Lavalink (no Docker o compose força host=lavalink)
+LAVALINK_HOST=127.0.0.1
+LAVALINK_PORT=2333
+LAVALINK_PASSWORD=youshallnotpass
+LAVALINK_SECURE=false
+LAVALINK_SEARCH_SOURCE=ytsearch
+LAVALINK_SEARCH_FALLBACKS=ytsearch,ytmsearch,scsearch
+LAVALINK_DEFAULT_VOLUME=80
+
+# Canal onde os comandos Pokémon funcionam
+POKEMON_CHANNEL_ID=1529584865249464390
 ```
 
-A config está em `lavalink/application.yml` (senha padrão: `youshallnotpass`, igual ao `.env.example`).
+### 2. Discord Developer Portal
+
+1. [applications](https://discord.com/developers/applications) → seu bot  
+2. **Bot** → ative:
+   - **Message Content Intent**
+   - **Server Members Intent**
+3. Convide o bot com permissões de mensagens, voz (conectar/falar) e as de moderação que for usar.
 
 ### 3. Subir
 
@@ -69,6 +99,10 @@ A config está em `lavalink/application.yml` (senha padrão: `youshallnotpass`, 
 # ou:
 docker compose up -d --build
 ```
+
+Isso sobe:
+- `isolde-lavalink` — servidor de áudio  
+- `isolde-bot` — o bot  
 
 ### 4. Logs e parar
 
@@ -80,231 +114,114 @@ docker compose logs -f lavalink
 # ou: docker compose down
 ```
 
-O Compose força `LAVALINK_HOST=lavalink` (rede interna). O valor `127.0.0.1` no `.env` só vale fora do Docker.
+### 5. Atualizar o bot depois de mudar código
+
+```sh
+docker compose up -d --build
+```
 
 ---
 
-## Forma alternativa: Node local (+ Lavalink separado)
+## Alternativa: Node no PC (sem Docker do bot)
 
 ### Requisitos
-
 - Node.js **22.12+** e npm  
-- Java (só se for rodar o Lavalink na máquina, sem Docker)
-
-### Passos
+- Java (só se for rodar Lavalink na máquina)  
+- **Não** use as pastas `nodejs/` e `java/` portáteis no NixOS — não funcionam bem.
 
 ```sh
 npm install
 cp .env.example .env
-# preencha DISCORD_TOKEN
+# preencha o token
 
-# Terminal 1 — música (Java + lavalink/Lavalink.jar local, se tiver)
+# Terminal 1 — música (opcional)
 ./scripts/start-lavalink.sh
 
 # Terminal 2 — bot
 ./scripts/start-bot.sh
-```
-
-Ou só o bot (sem música):
-
-```sh
-npm start
-```
-
-Desenvolvimento com reload:
-
-```sh
-npm run dev
-```
-
-### NixOS
-
-Veja [NIXOS.md](./NIXOS.md). Resumo: use **Docker**, ou `nix-shell -p nodejs_22 jre_headless` se for rodar nativo. Binários em `nodejs/` e `java/` de outro Linux **não** funcionam bem no NixOS.
-
----
-
-## Variáveis de ambiente (`.env`)
-
-Copie de `.env.example`:
-
-```env
-DISCORD_TOKEN=seu_token_aqui
-WELCOME_CHANNEL_ID=          # opcional
-GOODBYE_CHANNEL_ID=          # opcional
-
-LAVALINK_HOST=127.0.0.1
-LAVALINK_PORT=2333
-LAVALINK_PASSWORD=youshallnotpass
-LAVALINK_SECURE=false
-LAVALINK_SEARCH_SOURCE=ytmsearch
-LAVALINK_DEFAULT_VOLUME=80
+# ou: npm start
 ```
 
 ---
 
-## Como versionar no Git (commit e push)
+## Comandos principais
 
-```sh
-cd ~/Documentos/HallownestBots/Isolde   # ou a pasta do clone
-
-git status
-git add -A
-# confira que .env NÃO aparece:
-git status
-
-git commit -m "Descreva a mudança"
-git push origin teste    # ou main, conforme a branch
-```
-
-Antes do push, confira:
-
-```sh
-git status
-# não deve listar .env nem data/
-```
-
-Branch atual do repositório remoto costuma ser `teste` (veja com `git branch -vv`).
-
----
-
-## Dados locais
-
-Ficam em `data/database.json` (fora do Git): XP, pontos, reputação, avisos, casamentos, inventário, conquistas, configs e logs.
-
----
-
-## Visual
-
-Embeds verdes — cor em `src/systems/theme.js` (`0x2ecc71`).
-
----
-
-## Comandos
-
-### Básicos
-
+### Ajuda (paginada)
 ```txt
-!ping
-!help
 !ajuda
+!help
+!ajuda 3
 ```
+Botões **Anterior / Próxima** (5 páginas).
+
+### Utilidade & social
+`!ping` `!perfil` `!conquistas` `!rep` `!casar` `!avatar` `!userinfo` `!serverinfo` `!say`
+
+### Economia (pontos do servidor)
+`!daily` `!pontos` `!loja` `!item` `!comprar` `!vender` `!inventario` `!usar` `!efeitos` `!rankpontos`
 
 ### Música
+`!play` / `!p` · `!skip` · `!stop` · `!queue` · `!pause` · `!resume` · `!np` · `!volume`
 
-```txt
-!play nome_ou_link
-!p nome_ou_link
-!queue / !fila
-!np / !tocando
-!pause
-!resume / !continuar
-!skip
-!stop
-!volume
-!volume 1-100
-```
+Se alguma faixa for **pulada**, o YouTube bloqueou o stream (idade/região/DRM). Tente nome+artista em vez de link, ou outra fonte.
 
-### Perfil, XP e conquistas
+### Config / moderação (staff)
+`!config` · `!ban` `!kick` `!timeout` `!warn` `!clear` `!modlogs`
 
-```txt
-!perfil / !profile [@usuario]
-!xp / !level [@usuario]
-!rankxp
-!conquistas / !achievements [@usuario]
-```
+### Pokémon (só no canal do `POKEMON_CHANNEL_ID`)
+| Comando | O que faz |
+|---------|-----------|
+| `!phelp` | Ajuda Pokémon |
+| `!pstart` | Escolher inicial |
+| `!pwild` | Encontro selvagem |
+| `!pcatch [ball]` | Capturar |
+| `!pdex nome\|nº` | Pokédex |
+| `!pteam` / `!pbox` | Time e caixa |
+| `!ploja` / `!pbuy` | Loja em **pokécoins** 🪙 |
+| `!pbag` / `!puse` | Mochila / itens |
+| `!pbattle @user` | PvP |
+| `!paccept` / `!pmove 1-4` | Aceitar / atacar |
+| `!pdaily` | Daily de coins |
 
-XP sobe ao conversar (cooldown de 60s por usuário).
-
-### Pontos e daily
-
-```txt
-!daily
-!pontos [@usuario]
-!rankpontos
-```
-
-### Loja
-
-```txt
-!loja / !shop [categoria]
-!item id
-!comprar / !buy id
-!vender / !sell id
-!presentear / !gift @usuario id
-!inventario / !inv [@usuario]
-!usar id
-```
-
-Categorias: `consumivel`, `colecionavel`, `raro`, `utilidade`.
-
-### Minigames
-
-```txt
-!coinflip cara|coroa aposta
-!moeda …
-!guess / !adivinhar 1-5 aposta
-!minigames [@usuario]
-```
-
-### Reputação e casamento
-
-```txt
-!rep @usuario
-!rankrep / !reps
-!casar @usuario
-!aceitarcasamento / !recusarcasamento
-!divorciar
-!casamento [@usuario]
-```
-
-### Utilidade
-
-```txt
-!avatar [@usuario]
-!userinfo [@usuario]
-!serverinfo
-!say mensagem
-```
-
-### Configurações (Gerenciar Servidor)
-
-```txt
-!config / !painel
-!config logs #canal | off
-!config autorole @cargo | off
-!config welcome on|off
-!config goodbye on|off
-```
-
-### Moderação
-
-```txt
-!ban @usuario motivo
-!unban id
-!kick @usuario motivo
-!timeout @usuario 10m motivo
-!untimeout @usuario
-!warn @usuario motivo
-!warnings [@usuario]
-!clearwarns @usuario
-!clear quantidade
-!slowmode segundos
-!lock / !unlock
-!modlogs
-```
+A loja Pokémon (**🪙**) é **separada** da loja de pontos (`!loja`).
 
 ---
 
-## Estrutura do projeto
+## Git (para quem contribui)
 
-```txt
-Isolde/
-  src/                 # código do bot
-  scripts/             # start local e docker-up/down
-  lavalink/            # application.yml (+ jars locais, ignorados no git)
-  data/                # runtime (gitignored)
-  Dockerfile
-  docker-compose.yml
-  .env.example         # modelo sem segredos
-  .env                 # SEUS segredos (gitignored)
+```sh
+git status
+# NÃO deve listar: .env, data/database.json, nodejs/, java/, *.jar
+
+git add -A
+git commit -m "sua mensagem"
+git push origin main
 ```
+
+Precisa estar logado (`gh auth login` ou token SSH/HTTPS).
+
+Arquivos grandes (`nodejs/`, `java/`, jars) **não devem** ir pro Git (limite do GitHub: 100 MB).
+
+---
+
+## NixOS
+
+Use **Docker** (recomendado). Detalhes: [NIXOS.md](./NIXOS.md).
+
+---
+
+## Problemas comuns
+
+| Problema | O que fazer |
+|----------|-------------|
+| `TokenInvalid` | Token errado/resetado → novo token no `.env` e `docker compose up -d --force-recreate bot` |
+| Música não toca / pula faixa | YouTube bloqueou; tente `!play nome artista`. Confira logs: `docker logs isolde-lavalink` |
+| Comandos Pokémon não respondem | Só no canal do `POKEMON_CHANNEL_ID` |
+| Push rejeitado por arquivo grande | Não commite `nodejs/`, `java/`, jars |
+
+---
+
+## Licença / créditos
+
+Projeto pessoal · Hallownest Bots · Isolde  
+Sprites Pokémon via [PokeAPI](https://pokeapi.co/) (URLs oficiais de artwork).

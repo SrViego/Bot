@@ -22,11 +22,7 @@ function handleUtilityCommand(message) {
     return true;
   }
 
-  if (command === '!help' || command === '!ajuda') {
-    showHelp(message);
-    return true;
-  }
-
+  // !help / !ajuda → systems/help.js (paginado)
   return false;
 }
 
@@ -116,56 +112,6 @@ function say(message, args) {
     title: '📢 Anúncio',
     description: text.slice(0, 1800),
     footer: { text: `pedido por ${message.author.tag}` }
-  });
-}
-
-function showHelp(message) {
-  message.reply({
-    title: '📗 Guia da Isolde',
-    description: 'Comandos principais — digite com `!` no começo.',
-    fields: [
-      {
-        name: '🌿 Perfil & social',
-        value: '`!perfil` `!conquistas` `!rep @user` `!rankrep` `!casar` `!casamento`',
-        inline: false
-      },
-      {
-        name: '💰 Economia',
-        value: '`!pontos` `!daily` `!loja` `!comprar id` `!inventario` `!usar id` `!rankpontos`',
-        inline: false
-      },
-      {
-        name: '⭐ XP',
-        value: '`!xp` `!level` `!rankxp`',
-        inline: false
-      },
-      {
-        name: '🎲 Minigames',
-        value: '`!coinflip cara|coroa aposta` `!guess 1-5 aposta` `!minigames`',
-        inline: false
-      },
-      {
-        name: '🎵 Música',
-        value: '`!play` `!skip` `!stop` `!queue` `!pause` `!resume` `!volume` `!np`',
-        inline: false
-      },
-      {
-        name: '🛠️ Utilidade',
-        value: '`!avatar` `!userinfo` `!serverinfo` `!say` `!ping` `!ajuda`',
-        inline: false
-      },
-      {
-        name: '⚙️ Config (Gerenciar Servidor)',
-        value: '`!config` · `!config logs #canal` · `!config autorole @cargo` · `!config welcome on|off` · `!config goodbye on|off`',
-        inline: false
-      },
-      {
-        name: '🛡️ Moderação',
-        value: '`!ban` `!kick` `!timeout` `!warn` `!clear` `!lock` `!unlock` `!modlogs`',
-        inline: false
-      }
-    ],
-    thumbnail: message.client.user.displayAvatarURL({ size: 128 })
   });
 }
 

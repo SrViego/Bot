@@ -61,7 +61,16 @@ function claimDaily(message, data) {
   userData.stats.dailies += 1;
 
   const streakBonus = Math.min((userData.stats.dailyStreak - 1) * 20, 200);
-  const reward = 100 + streakBonus;
+  let reward = 100 + streakBonus;
+  let boostNote = null;
+  // Buff da loja (relógio do tempo)
+  if (userData.effects?.dailyBoostMult) {
+    const mult = Number(userData.effects.dailyBoostMult) || 1.5;
+    const before = reward;
+    reward = Math.floor(reward * mult);
+    boostNote = `Boost da loja ×${mult}: ${before} → **${reward}**`;
+    delete userData.effects.dailyBoostMult;
+  }
   userData.points += reward;
   userData.lastDailyAt = now;
 
@@ -71,16 +80,21 @@ function claimDaily(message, data) {
   if (userData.points >= 1000) unlocked.push(...grantAchievements(userData, ["wealthy"]));
 
   saveData(data);
+  const fields = [
+    { name: '💰 Recompensa', value: `**+${reward}** pontos`, inline: true },
+    { name: '🔥 Sequência', value: `**${userData.stats.dailyStreak}** dia(s)`, inline: true },
+    { name: '✨ Bônus streak', value: `+${streakBonus}`, inline: true },
+    { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+  ];
+  if (boostNote) {
+    fields.push({ name: '🏪 Boost da loja', value: boostNote, inline: false });
+  }
+
   message.reply({
     title: '🎁 Daily resgatado!',
     description: `${message.author} abriu o baú diário.`,
     thumbnail: message.author.displayAvatarURL({ size: 128 }),
-    fields: [
-      { name: '💰 Recompensa', value: `**+${reward}** pontos`, inline: true },
-      { name: '🔥 Sequência', value: `**${userData.stats.dailyStreak}** dia(s)`, inline: true },
-      { name: '✨ Bônus streak', value: `+${streakBonus}`, inline: true },
-      { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
-    ]
+    fields
   });
   notifyAchievements(message, unlocked);
 }

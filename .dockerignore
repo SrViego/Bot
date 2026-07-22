@@ -3,7 +3,8 @@ nodejs
 java
 .git
 .env
-data
+# runtime only — manter pokédex estática no build
+data/database.json
 lavalink
 scripts
 *.md

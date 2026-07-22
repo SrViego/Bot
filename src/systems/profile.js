@@ -18,9 +18,13 @@ function handleProfileCommand(message, data) {
   const minigames = userData.minigames ?? {};
   const bar = progressBar(userData.xp, neededXp, 12);
 
+  const titleLine = userData.equippedTitle
+    ? `\n**${userData.equippedTitle}**`
+    : '';
+
   message.reply({
     title: `📜 Perfil de ${target.username}`,
-    description: `${target}`,
+    description: `${target}${titleLine}`,
     thumbnail: target.displayAvatarURL({ size: 256 }),
     fields: [
       {

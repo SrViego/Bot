@@ -82,6 +82,8 @@ function getUserData(data, guildId, userId) {
       lastRepAt: 0,
       rep: 0,
       inventory: {},
+      effects: {},
+      equippedTitle: null,
       achievements: [],
       minigames: {
         lastCoinflipAt: 0,
@@ -94,7 +96,9 @@ function getUserData(data, guildId, userId) {
         dailies: 0,
         dailyStreak: 0,
         bestDailyStreak: 0,
-        purchases: 0
+        purchases: 0,
+        itemsUsed: 0,
+        giftsSent: 0
       }
     };
   }
@@ -102,6 +106,8 @@ function getUserData(data, guildId, userId) {
   const userData = guildData.users[userId];
 
   if (!userData.inventory) userData.inventory = {};
+  if (!userData.effects || typeof userData.effects !== 'object') userData.effects = {};
+  if (userData.equippedTitle === undefined) userData.equippedTitle = null;
   if (!Array.isArray(userData.achievements)) userData.achievements = [];
   if (!userData.stats) userData.stats = {};
   if (!userData.minigames) userData.minigames = {};
@@ -120,14 +126,30 @@ function getUserData(data, guildId, userId) {
   if (!Number.isInteger(userData.stats.dailyStreak)) userData.stats.dailyStreak = 0;
   if (!Number.isInteger(userData.stats.bestDailyStreak)) userData.stats.bestDailyStreak = 0;
   if (!Number.isInteger(userData.stats.purchases)) userData.stats.purchases = 0;
+  if (!Number.isInteger(userData.stats.itemsUsed)) userData.stats.itemsUsed = 0;
+  if (!Number.isInteger(userData.stats.giftsSent)) userData.stats.giftsSent = 0;
 
   return userData;
+}
+
+/** Efeito ativo se timestamp no futuro */
+function hasActiveEffect(userData, key) {
+  const until = userData.effects?.[key];
+  return typeof until === 'number' && until > Date.now();
+}
+
+function getEffectRemainingMs(userData, key) {
+  const until = userData.effects?.[key];
+  if (typeof until !== 'number') return 0;
+  return Math.max(0, until - Date.now());
 }
 
 module.exports = {
   defaultGuildConfig,
   getGuildData,
   getUserData,
+  hasActiveEffect,
+  getEffectRemainingMs,
   loadData,
   saveData
 };

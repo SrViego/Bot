@@ -12,12 +12,14 @@ const { handleProfileCommand } = require('./systems/profile');
 const { handleReputationCommand } = require('./systems/reputation');
 const { handleMinigameCommand } = require('./systems/minigames');
 const { handleUtilityCommand } = require('./systems/utility');
+const { handleHelpCommand } = require('./systems/help');
 const { handleConfigCommand } = require('./systems/config');
 const { applyAutoRole } = require('./systems/autoroles');
 const { handleModLogCommand } = require('./systems/modlogs');
 const { applyGreenTheme, createEmbed } = require('./systems/theme');
 const { sendWelcome, sendGoodbye } = require('./systems/welcome');
 const { handleLavalinkRawData, handleMusicCommand, initLavalink } = require('./systems/music');
+const { handlePokemonCommand } = require('./systems/pokemon');
 
 const token = process.env.DISCORD_TOKEN;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
@@ -102,6 +104,10 @@ client.on(Events.MessageCreate, async (message) => {
     return;
   }
 
+  // Pokémon: só no canal configurado (checa dentro do handler)
+  if (handlePokemonCommand(message, data)) return;
+
+  if (handleHelpCommand(message)) return;
   if (handleConfigCommand(message, data)) return;
   if (handleUtilityCommand(message)) return;
   if (handleProfileCommand(message, data)) return;

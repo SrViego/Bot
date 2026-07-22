@@ -81,6 +81,13 @@ function handlePokemonCommand(message, data) {
     '!padd': () => boxToTeam(message, args, data),
     '!premove': () => teamToBox(message, args, data),
     '!pswap': () => swapTeam(message, args, data),
+    // Pokémon principal (líder do time = slot 1, usado em captura/PvP/itens)
+    '!pmain': () => setMainPokemon(message, args, data),
+    '!plider': () => setMainPokemon(message, args, data),
+    '!pprincipal': () => setMainPokemon(message, args, data),
+    '!plead': () => setMainPokemon(message, args, data),
+    '!pmon': () => showMainPokemon(message, data),
+    '!ppoke': () => showMainPokemon(message, data),
     '!ploja': () => showPokeShop(message, data),
     '!pshop': () => showPokeShop(message, data),
     '!pbuy': () => buyPokeItem(message, args, data),
@@ -218,10 +225,13 @@ function showHelp(message) {
       '`!pcatch [ball]` — capturar (pokeball/greatball/ultraball/masterball)',
       '',
       '**Time & caixa**',
-      '`!pteam` · `!pbox [página]` · `!padd #` · `!premove #` · `!pswap a b`',
+      '`!pteam` — ver time (⭐ = principal)',
+      '`!pmain 2` / `!plider 2` — **trocar o Pokémon principal**',
+      '`!pmon` — detalhes do principal',
+      '`!pbox [página]` · `!padd #` · `!premove #` · `!pswap a b`',
       '',
       '**Loja Pokémon** (pokécoins 🪙)',
-      '`!ploja` · `!pbuy id` · `!pbag` · `!puse rarecandy` · `!pdaily`',
+      '`!ploja` · `!pbuy id` · `!pbag` · `!puse potion` · `!pdaily`',
       '',
       '**PvP**',
       '`!pbattle @user` · `!paccept` · `!pdeny`',
@@ -490,29 +500,183 @@ function showDex(message, args) {
   });
 }
 
+function hpBar(hp, maxHp, size = 8) {
+  const max = Math.max(1, maxHp || 1);
+  const cur = Math.max(0, Math.min(max, hp ?? max));
+  const filled = Math.round((cur / max) * size);
+  const empty = size - filled;
+  const pct = Math.floor((cur / max) * 100);
+  return `\`${'█'.repeat(filled)}${'░'.repeat(empty)}\` ${cur}/${max} (${pct}%)`;
+}
+
 function showTeam(message, data) {
   const userData = getUserData(data, message.guild.id, message.author.id);
   const poke = ensurePoke(userData);
   if (!requireStart(message, poke)) return;
 
   if (!poke.team.length) {
-    message.reply({ title: '👥 Time vazio', description: 'Use `!padd #` da caixa.' });
+    message.reply({
+      title: '👥 Time vazio',
+      description: 'Use `!padd #` da caixa para montar o time.'
+    });
     return;
   }
 
+  const leader = poke.team[0];
   const lines = poke.team.map((m, i) => {
-    const active = i === 0 ? '⭐' : `${i + 1}.`;
-    return `${active} **${m.name}** Nv.${m.level} · HP ${m.hp}/${m.maxHp} · ${formatTypes(m.types)}`;
+    const tag = i === 0 ? '⭐ **PRINCIPAL**' : `**#${i + 1}**`;
+    return [
+      `${tag} · **${m.name}** · Nv.**${m.level}**`,
+      `HP ${hpBar(m.hp, m.maxHp)}`,
+      `${formatTypes(m.types)}`
+    ].join('\n');
   });
 
   message.reply({
     title: `👥 Time de ${message.author.username}`,
-    description: lines.join('\n'),
-    thumbnail: spriteIcon(poke.team[0].speciesId),
+    description: [
+      `Líder atual: **${leader.name}** (usa \`!pmain N\` para trocar)`,
+      '',
+      lines.join('\n\n')
+    ].join('\n'),
+    thumbnail: spriteUrl(leader.speciesId),
+    fields: [
+      { name: 'Slots', value: `${poke.team.length}/${poke.teamLimit}`, inline: true },
+      { name: '🪙 Coins', value: String(poke.coins), inline: true },
+      { name: 'PvP', value: `${poke.wins}W / ${poke.losses}L`, inline: true }
+    ],
     footer: {
-      text: `Limite ${poke.team.length}/${poke.teamLimit} · 🪙 ${poke.coins} · W/L ${poke.wins}/${poke.losses}`
+      text: '!pmain 2 = torna o #2 principal · !pmon · !pswap 1 2'
     },
     color: 0x3498db
+  });
+}
+
+/**
+ * Define o Pokémon principal (líder): vai para o slot 1.
+ * Uso: !pmain 2   |  !plider 3   |  !pprincipal 1
+ */
+function setMainPokemon(message, args, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const poke = ensurePoke(userData);
+  if (!requireStart(message, poke)) return;
+
+  if (poke.team.length < 1) {
+    message.reply({
+      title: '👥 Time vazio',
+      description: 'Capture ou adicione Pokémon antes.',
+      color: 0xe74c3c
+    });
+    return;
+  }
+
+  if (!args[1]) {
+    const list = poke.team
+      .map((m, i) => {
+        const star = i === 0 ? '⭐' : `\`#${i + 1}\``;
+        return `${star} **${m.name}** Nv.${m.level}`;
+      })
+      .join('\n');
+    message.reply({
+      title: '⭐ Trocar Pokémon principal',
+      description: [
+        'O **principal** (⭐) luta no PvP, recebe XP de captura e usa itens.',
+        '',
+        '**Uso:** `!pmain número`',
+        'Exemplos: `!pmain 2` · `!plider 3` · `!pprincipal 1`',
+        '',
+        list
+      ].join('\n'),
+      thumbnail: spriteIcon(poke.team[0].speciesId),
+      color: 0xf1c40f
+    });
+    return;
+  }
+
+  const idx = Number(args[1]) - 1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= poke.team.length) {
+    message.reply({
+      title: '❌ Número inválido',
+      description: `Escolha de **1** a **${poke.team.length}**. Veja com \`!pteam\`.`,
+      color: 0xe74c3c
+    });
+    return;
+  }
+
+  if (idx === 0) {
+    message.reply({
+      title: '⭐ Já é o principal',
+      description: `**${poke.team[0].name}** já é o líder do time.`,
+      thumbnail: spriteIcon(poke.team[0].speciesId),
+      color: 0x2ecc71
+    });
+    return;
+  }
+
+  const [mon] = poke.team.splice(idx, 1);
+  poke.team.unshift(mon);
+  saveData(data);
+
+  message.reply({
+    title: '⭐ Novo Pokémon principal!',
+    description: [
+      `${message.author} definiu **${mon.name}** como líder.`,
+      '',
+      showTeamInline(poke.team),
+      '',
+      'Ele será usado em **PvP**, **itens** e **XP** de captura.'
+    ].join('\n'),
+    thumbnail: spriteUrl(mon.speciesId),
+    color: 0xf1c40f
+  });
+}
+
+function showMainPokemon(message, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const poke = ensurePoke(userData);
+  if (!requireStart(message, poke)) return;
+
+  const mon = poke.team[0];
+  if (!mon) {
+    message.reply({ title: 'Sem líder', description: 'Time vazio.', color: 0xe74c3c });
+    return;
+  }
+
+  const moves = (mon.moves || [])
+    .map((m, i) => `\`${i + 1}\` **${m.name}** (${m.type} · ${m.power})`)
+    .join('\n');
+
+  const species = getPokemon(mon.speciesId);
+  const [hp, atk, def, spa, spd, spe] = [
+    mon.stats?.hp ?? mon.maxHp,
+    mon.stats?.atk ?? '—',
+    mon.stats?.def ?? '—',
+    mon.stats?.spa ?? '—',
+    mon.stats?.spd ?? '—',
+    mon.stats?.spe ?? '—'
+  ];
+
+  message.reply({
+    title: `⭐ Principal · ${mon.name}`,
+    description: [
+      `${message.author}`,
+      `Nível **${mon.level}** · ${formatTypes(mon.types)}`,
+      `HP ${hpBar(mon.hp, mon.maxHp, 10)}`,
+      '',
+      '**Golpes**',
+      moves || '_sem golpes_'
+    ].join('\n'),
+    thumbnail: spriteUrl(mon.speciesId),
+    fields: [
+      { name: 'ATK', value: String(atk), inline: true },
+      { name: 'DEF', value: String(def), inline: true },
+      { name: 'SpA', value: String(spa), inline: true },
+      { name: 'SpD', value: String(spd), inline: true },
+      { name: 'SPE', value: String(spe), inline: true },
+      { name: 'Raridade', value: mon.rarity || species?.rarity || '—', inline: true }
+    ],
+    footer: { text: 'Trocar líder: !pmain 2  ·  Time: !pteam' },
+    color: 0xf1c40f
   });
 }
 
@@ -627,14 +791,27 @@ function swapTeam(message, args, data) {
     a >= poke.team.length ||
     b >= poke.team.length
   ) {
-    message.reply({ title: 'Uso', description: '`!pswap 1 2` — troca posições do time' });
+    message.reply({
+      title: '🔄 Trocar posições',
+      description: [
+        '`!pswap A B` — troca dois slots do time',
+        'Ex.: `!pswap 1 2` (principal ↔ segundo)',
+        '',
+        'Para só definir o líder: `!pmain 2`'
+      ].join('\n')
+    });
     return;
   }
   [poke.team[a], poke.team[b]] = [poke.team[b], poke.team[a]];
   saveData(data);
   message.reply({
     title: '🔄 Time reordenado',
-    description: showTeamInline(poke.team),
+    description: [
+      `Principal agora: ⭐ **${poke.team[0].name}**`,
+      '',
+      showTeamInline(poke.team)
+    ].join('\n'),
+    thumbnail: spriteIcon(poke.team[0].speciesId),
     color: 0x3498db
   });
 }
@@ -851,7 +1028,13 @@ function showPokeStatus(message, data) {
   message.reply({
     title: '📊 Status Pokémon',
     description: mon
-      ? `Líder: **${mon.name}** Nv.${mon.level}\nHP ${mon.hp}/${mon.maxHp}`
+      ? [
+          `⭐ **Principal:** ${mon.name} Nv.**${mon.level}**`,
+          `HP ${hpBar(mon.hp, mon.maxHp, 10)}`,
+          formatTypes(mon.types),
+          '',
+          '_Trocar: `!pmain 2` · Detalhes: `!pmon`_'
+        ].join('\n')
       : 'Sem líder',
     fields: [
       { name: '🪙 Coins', value: String(poke.coins), inline: true },
@@ -861,12 +1044,13 @@ function showPokeStatus(message, data) {
       { name: '📦 Caixa', value: `${poke.box.length}/${MAX_BOX}`, inline: true },
       {
         name: 'Buffs',
-        value: [
-          poke.expShareLeft ? `ExpShare×${poke.expShareLeft}` : null,
-          poke.incenseUntil > Date.now() ? 'Incenso' : null
-        ]
-          .filter(Boolean)
-          .join(' · ') || 'nenhum',
+        value:
+          [
+            poke.expShareLeft ? `ExpShare×${poke.expShareLeft}` : null,
+            poke.incenseUntil > Date.now() ? 'Incenso' : null
+          ]
+            .filter(Boolean)
+            .join(' · ') || 'nenhum',
         inline: true
       }
     ],
@@ -1194,7 +1378,12 @@ function requireStart(message, poke) {
 }
 
 function showTeamInline(team) {
-  return team.map((m, i) => `${i + 1}. **${m.name}** Nv.${m.level}`).join('\n');
+  return team
+    .map((m, i) => {
+      const star = i === 0 ? '⭐' : `\`#${i + 1}\``;
+      return `${star} **${m.name}** Nv.${m.level} · HP ${m.hp}/${m.maxHp}`;
+    })
+    .join('\n');
 }
 
 function rarityColor(r) {

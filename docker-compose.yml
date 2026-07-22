@@ -3,30 +3,26 @@
 #   docker compose up -d --build
 #   docker compose logs -f
 #   docker compose down
-#
-# Precisa de .env com DISCORD_TOKEN valido (copia de .env.example).
 
 services:
   lavalink:
-    image: ghcr.io/lavalink-devs/lavalink:4
+    build:
+      context: .
+      dockerfile: Dockerfile.lavalink
+    image: isolde-lavalink:local
     container_name: isolde-lavalink
     restart: unless-stopped
     volumes:
-      # Config e plugin YouTube da tua pasta local
+      # Só a config — plugins já estão na imagem (sem Permission denied)
       - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
-      - ./lavalink/plugins:/opt/Lavalink/plugins
-    # So na rede interna do compose (bot acessa por nome "lavalink")
-    # Descomente ports se quiser testar Lavalink de fora do Docker:
-    # ports:
-    #   - "2333:2333"
     networks:
       - isolde
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/2333'"]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 20s
+      retries: 10
+      start_period: 45s
 
   bot:
     build: .
@@ -35,12 +31,10 @@ services:
     env_file:
       - .env
     environment:
-      # Importante: dentro do Docker o host do Lavalink e o nome do servico
       LAVALINK_HOST: lavalink
       LAVALINK_PORT: "2333"
       LAVALINK_SECURE: "false"
     volumes:
-      # Persistencia (XP, pontos, loja, etc.)
       - ./data:/app/data
     depends_on:
       lavalink:

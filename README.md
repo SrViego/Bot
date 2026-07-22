@@ -80,6 +80,9 @@ POKEMON_CHANNEL_ID=1529584865249464390
 docker compose up -d --build
 ```
 
+Isso também builda o **Lavalink com o plugin YouTube embutido** (`Dockerfile.lavalink`), evitando erro de permissão ao baixar o plugin.
+
+
 Sobe dois containers:
 
 - `isolde-lavalink` — áudio / YouTube  

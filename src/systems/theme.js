@@ -6,8 +6,8 @@ const theme = {
   colorWarn: 0xf1c40f,
   colorError: 0xe74c3c,
   colorInfo: 0x3498db,
-  name: 'Isolde',
-  footer: '✦ Hallownest Bots · Isolde',
+  name: 'Morgana',
+  footer: '✦ Hallownest Bots · Morgana',
   // GIFs padrao (podem ser sobrescritos no .env)
   welcomeGifs: [
     'https://media.giphy.com/media/ASd0Ukj0y3qMM/giphy.gif',

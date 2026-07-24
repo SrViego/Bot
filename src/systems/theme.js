@@ -120,20 +120,33 @@ function asThemedPayload(payload) {
 
   if (!payload || typeof payload !== 'object') return payload;
 
-  // ja e payload rico do discord.js
-  if (payload.embeds || payload.files || payload.components || payload.poll) {
+  // ja e payload rico do discord.js (embeds prontos)
+  if (payload.embeds || payload.components || payload.poll) {
     return payload;
   }
 
-  // objeto de opcoes do nosso helper
+  // objeto de opcoes do nosso helper (pode incluir files + image attachment)
   if (
     payload.title ||
     payload.description ||
     payload.fields ||
     payload.thumbnail ||
     payload.image ||
-    payload.mentionUserId
+    payload.mentionUserId ||
+    payload.files
   ) {
+    // se só tem files sem metadados de embed, repassa cru
+    if (
+      payload.files &&
+      !payload.title &&
+      !payload.description &&
+      !payload.fields &&
+      !payload.thumbnail &&
+      !payload.image &&
+      !payload.mentionUserId
+    ) {
+      return payload;
+    }
     return buildPayload(payload);
   }
 

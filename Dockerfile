@@ -8,6 +8,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY src ./src
+COPY assets ./assets
 # Pokédex estática (runtime database.json vem do volume)
 COPY data/pokemon-data.json ./data/pokemon-data.json
 RUN mkdir -p /app/data

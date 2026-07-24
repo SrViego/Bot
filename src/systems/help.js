@@ -9,12 +9,14 @@ const { createEmbed, theme } = require('./theme');
 const HELP_PAGES = [
   {
     title: '📕 Guia da Morgana · Geral',
-    description: 'Página **1/5** — visão geral.\nBotões abaixo ou `!ajuda 2`, `!ajuda 3`…',
+    description: 'Página **1/6** — visão geral.\nBotões abaixo ou `!ajuda 2`, `!ajuda 3`…',
     fields: [
       {
         name: '🛠️ Utilidade',
-        value: '`!ping` `!ajuda [página]` `!avatar` `!userinfo` `!serverinfo` `!say`'
+        value:
+          '`!ping` `!ajuda [página]` `!avatar` `!userinfo` `!serverinfo` `!say` `!limpeza`\n`!ticket [motivo]` · `!suporte` · `!pedirajuda`'
       },
+
       {
         name: '🌿 Perfil & social',
         value: '`!perfil` `!conquistas` `!rep @user` `!rankrep` `!casar` `!casamento`'
@@ -27,7 +29,7 @@ const HELP_PAGES = [
   },
   {
     title: '📕 Guia · Economia & loja',
-    description: 'Página **2/5** — pontos, daily e loja de Dirtmouth.',
+    description: 'Página **2/6** — pontos, daily e loja de Dirtmouth.',
     fields: [
       {
         name: '💰 Pontos',
@@ -40,13 +42,34 @@ const HELP_PAGES = [
       },
       {
         name: '🎲 Minigames',
-        value: '`!coinflip cara|coroa aposta` `!guess 1-5 aposta` `!minigames`'
+        value:
+          '`!coinflip cara|coroa aposta` (ou `aposta cara`, `all`)\n`!guess 1-5 aposta` `!minigames`'
+      }
+    ]
+  },
+  {
+    title: '📕 Guia · Padaria',
+    description:
+      'Página **3/6** — idle de padaria (inspirado no *bake.gg*, conteúdo original).\nMoedas da padaria ≠ pontos do servidor.',
+    fields: [
+      {
+        name: '🔁 Loop',
+        value: '`!assar receita` → espera → `!servir` → 🪙 + XP da padaria'
+      },
+      {
+        name: '🥖 Comandos',
+        value:
+          '`!padaria` `!assar` `!servir` `!receitas` `!forno` `!rankpadaria`\n`!ajuda padaria` ou `!padariahelp`'
+      },
+      {
+        name: '🚀 Começar',
+        value: '`!assar pao` ou `!assar croissant` — depois `!servir` quando ficar pronto.'
       }
     ]
   },
   {
     title: '📕 Guia · Música',
-    description: 'Página **3/5** — precisa do Lavalink (Docker ou local).',
+    description: 'Página **4/6** — precisa do Lavalink (Docker ou local).',
     fields: [
       {
         name: '🎵 Comandos',
@@ -61,7 +84,7 @@ const HELP_PAGES = [
   },
   {
     title: '📕 Guia · Config & moderação',
-    description: 'Página **4/5** — para a staff do servidor.',
+    description: 'Página **5/6** — para a staff do servidor.',
     fields: [
       {
         name: '⚙️ Config (Gerenciar Servidor)',
@@ -71,14 +94,19 @@ const HELP_PAGES = [
       {
         name: '🛡️ Moderação',
         value:
-          '`!ban` `!unban` `!kick` `!timeout` `!untimeout`\n`!warn` `!warnings` `!clearwarns`\n`!clear` `!slowmode` `!lock` `!unlock` `!modlogs`'
+          '`!ban` `!unban` `!kick` `!timeout` `!untimeout`\n`!warn` `!warnings` `!clearwarns`\n`!clear` `!limpeza` `!slowmode` `!lock` `!unlock` `!modlogs`'
+      },
+      {
+        name: '🎫 Tickets / ajuda',
+        value:
+          'Membros: `!ticket [motivo]`\nStaff: `!fechar` · `!addticket @user` · `!tickets`\nConfig: `!config ticket*` (categoria + cargo)'
       }
     ]
   },
   {
     title: '📕 Guia · Pokémon',
     description:
-      'Página **5/5** — **apenas no canal Pokémon**.\nPokédex nacional · loja 🪙 · PvP.',
+      'Página **6/6** — **apenas no canal Pokémon**.\nPokédex nacional · loja 🪙 · PvP.',
     fields: [
       {
         name: '🌱 Início & captura',

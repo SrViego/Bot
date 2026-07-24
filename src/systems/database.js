@@ -8,7 +8,12 @@ const defaultGuildConfig = {
   logChannelId: null,
   autoRoleId: null,
   welcomeEnabled: true,
-  goodbyeEnabled: true
+  goodbyeEnabled: true,
+  // tickets / canais de ajuda
+  ticketEnabled: true,
+  ticketCategoryId: null,
+  ticketStaffRoleId: null,
+  ticketCounter: 0
 };
 
 const defaultData = {
@@ -17,7 +22,8 @@ const defaultData = {
   proposals: {},
   warnings: {},
   guildConfigs: {},
-  moderationLogs: {}
+  moderationLogs: {},
+  tickets: {}
 };
 
 function loadData() {
@@ -52,8 +58,10 @@ function getGuildData(data, guildId) {
   if (!data.warnings[guildId]) data.warnings[guildId] = {};
   if (!data.guildConfigs) data.guildConfigs = {};
   if (!data.moderationLogs) data.moderationLogs = {};
+  if (!data.tickets) data.tickets = {};
   if (!data.guildConfigs[guildId]) data.guildConfigs[guildId] = structuredClone(defaultGuildConfig);
   if (!data.moderationLogs[guildId]) data.moderationLogs[guildId] = [];
+  if (!data.tickets[guildId]) data.tickets[guildId] = {};
 
   data.guildConfigs[guildId] = {
     ...structuredClone(defaultGuildConfig),

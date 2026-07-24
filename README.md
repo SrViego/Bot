@@ -1,6 +1,7 @@
 # Morgana Bot
 
-Bot de Discord em **Node.js** (`discord.js`) para a comunidade Hallownest.
+Bot de Discord em **Node.js** (`discord.js`) para a comunidade Hallownest.  
+Tema visual dos embeds: **vermelho coral** (`#E7644D` / `#F79F5B`).
 
 ### O que tem
 
@@ -10,6 +11,9 @@ Bot de Discord em **Node.js** (`discord.js`) para a comunidade Hallownest.
 | 💰 Economia | Pontos, daily, loja de Dirtmouth, inventário, efeitos |
 | ⭐ XP / perfil | Níveis, conquistas, reputação, casamento, minigames |
 | 🛡️ Moderação | Ban, kick, timeout, warns, clear, logs |
+| 🧹 Limpeza | `!limpeza` — canal, msgs da bot, efeitos expirados |
+| 🎫 Tickets | Pedir ajuda → canal privado com a staff |
+| 🥖 Padaria | Idle assar → servir (estilo bake.gg, arte própria) + **pixel-art** |
 | 🔥 Welcome | Boas-vindas e despedida com **menção** + **GIF** |
 | 📕 Pokémon | Pokédex (~1025 spp.), captura, loja 🪙, time e **PvP** (canal exclusivo) |
 
@@ -68,9 +72,11 @@ POKEMON_CHANNEL_ID=1529584865249464390
    - **Server Members Intent**
 4. Copie o token para o `.env`
 5. Convide o bot com permissões de:
-   - Enviar mensagens / embeds
+   - Enviar mensagens / embeds / anexos (padaria pixel-art)
    - Conectar e falar (música)
-   - Moderação (se for usar ban/kick/etc.)
+   - Moderação (ban/kick/etc.)
+   - **Gerenciar canais** (tickets de ajuda)
+   - **Gerenciar mensagens** (`!limpeza` / `!clear`)
 
 ### 4. Subir com Docker
 
@@ -81,7 +87,6 @@ docker compose up -d --build
 ```
 
 Isso também builda o **Lavalink com o plugin YouTube embutido** (`Dockerfile.lavalink`), evitando erro de permissão ao baixar o plugin.
-
 
 Sobe dois containers:
 
@@ -135,6 +140,7 @@ cp .env.example .env
 | Item | No teu PC | No GitHub |
 |------|-----------|-----------|
 | Código (`src/`) | ✅ | ✅ |
+| `assets/bakery/` (pixel-art) | ✅ | ✅ |
 | `Dockerfile` / `docker-compose.yml` | ✅ | ✅ |
 | `data/pokemon-data.json` (Pokédex) | ✅ | ✅ |
 | `.env` (token) | ✅ | ❌ |
@@ -152,17 +158,26 @@ cp .env.example .env
 Morgana/
   src/
     index.js
-    systems/           # módulos do bot
+    systems/              # módulos do bot
+      bakery.js           # padaria idle
+      bakery-render.js    # pixel-art PNG
+      tickets.js          # canais de ajuda
+      cleanup.js          # limpeza
+      theme.js            # embeds (vermelho)
+      ...
+  assets/
+    bakery/               # sprites PNG da padaria
+      bg.png, oven_*.png, items/, README.md
   data/
-    database.json      # runtime (local)
-    pokemon-data.json  # Pokédex (no Git)
+    database.json         # runtime (local)
+    pokemon-data.json     # Pokédex (no Git)
   lavalink/
     application.yml
   scripts/
   Dockerfile
   docker-compose.yml
   .env.example
-  .env                 # local
+  .env                    # local
   README.md
 ```
 
@@ -176,9 +191,10 @@ Morgana/
 !ajuda
 !help
 !ajuda 3
+!ajuda padaria
 ```
 
-5 páginas com botões **Anterior / Próxima**.
+**6 páginas** com botões **Anterior / Próxima** (Geral, Economia, Padaria, Música, Config, Pokémon).
 
 ---
 
@@ -210,9 +226,78 @@ Morgana/
 | `!inventario` `!usar id` | Inventário e uso |
 | `!presentear @user id` | Presente |
 | `!efeitos` | Buffs ativos (XP, daily…) |
-| `!coinflip` / `!guess` | Minigames |
+
+#### Minigames
+
+| Comando | Função |
+|---------|--------|
+| `!coinflip cara\|coroa <aposta>` | Cara ou coroa (odds 1:1) |
+| `!coinflip <aposta> cara` | Ordem flexível |
+| `!coinflip h 50` / `all` | Aliases `h/t`, `heads/tails`, aposta `all`/`tudo` |
+| `!guess 1-5 <aposta>` | Adivinhe (prêmio 4×) |
+| `!minigames [@user]` | Placar de vitórias/derrotas |
 
 Categorias da loja: `consumivel`, `colecionavel`, `raro`, `utilidade`, `titulo`.
+
+---
+
+### 🥖 Padaria (idle + pixel-art)
+
+Moeda **separada** das 🪙 pokécoins e dos pontos do servidor.
+
+Loop: **assar → esperar → servir → XP/nível → mais fornos**.
+
+| Comando | Função |
+|---------|--------|
+| `!padaria` | Status + **imagem pixel-art** da loja |
+| `!assar [receita]` | Usa um forno livre (`pao`, `croissant`…) |
+| `!servir` | Vende o que ficou pronto |
+| `!receitas` | Lista desbloqueadas / bloqueadas |
+| `!forno` | Compra forno extra (moedas da padaria) |
+| `!rankpadaria` | Ranking do servidor |
+| `!padariahelp` / `!ajuda padaria` | Guia rápido |
+
+Sprites em `assets/bakery/` (já vem um pack no tema Morgana).  
+Troque os PNGs e reinicie o bot — ver `assets/bakery/README.md`.
+
+---
+
+### 🎫 Tickets (canal de ajuda)
+
+Membro pede ajuda → bot cria canal privado com a staff.
+
+| Comando | Quem | Função |
+|---------|------|--------|
+| `!ticket [motivo]` | Qualquer um | Abre canal de ajuda |
+| `!suporte` / `!pedirajuda` | Qualquer um | Idem |
+| `!fechar [motivo]` | Autor ou staff | Fecha e apaga o canal (~10s) |
+| Botão **Fechar ticket** | Autor ou staff | Idem |
+| `!addticket @user` | Staff / dono | Adiciona alguém no canal |
+| `!tickets` | Staff | Lista tickets abertos |
+
+#### Config (Gerenciar Servidor)
+
+```txt
+!config ticket on|off
+!config ticketcategoria #categoria   (ou ID)
+!config ticketcargo @cargo           (staff que vê todos os tickets)
+```
+
+**Permissão do bot:** Gerenciar Canais.
+
+---
+
+### 🧹 Limpeza
+
+| Comando | Função |
+|---------|--------|
+| `!limpeza` | Ajuda |
+| `!limpeza <1-100>` | Apaga N mensagens do canal |
+| `!limpeza bot [50]` | Só mensagens da Morgana |
+| `!limpeza efeitos` | Remove buffs expirados da database |
+
+Precisa de **Gerenciar Mensagens** (canal) ou **Gerenciar Servidor** (efeitos).  
+Aliases: `!cleanup`, `!clean`.
 
 ---
 
@@ -235,7 +320,7 @@ Categorias da loja: `consumivel`, `colecionavel`, `raro`, `utilidade`, `titulo`.
 
 | Comando | Função |
 |---------|--------|
-| `!config` / `!painel` | Painel |
+| `!config` / `!painel` | Painel (logs, autorole, welcome, tickets…) |
 | `!config logs #canal \| off` | Canal de logs |
 | `!config autorole @cargo \| off` | Auto cargo |
 | `!config welcome on\|off` | Boas-vindas |
@@ -314,6 +399,8 @@ Prefira **Docker**. Detalhes extras: [NIXOS.md](./NIXOS.md).
 | `TokenInvalid` | Token inválido → reset no Portal → atualize `.env` → `docker compose up -d --force-recreate bot` |
 | Música pula faixas | Bloqueio do YouTube; tente nome+artista; veja `docker logs morgana-lavalink` |
 | Pokémon não responde | Só no canal do `POKEMON_CHANNEL_ID` |
+| Ticket não abre | Bot precisa de **Gerenciar Canais**; configure categoria/cargo com `!config ticket*` |
+| `!padaria` sem imagem | Reinicie o bot; confira `assets/bakery/` no container (`Dockerfile` copia `assets/`) |
 | Push com “Large files” | Remova `nodejs/`, `java/`, jars do commit (já no `.gitignore`) |
 | Bot sobe antes do Lavalink | O compose espera o healthcheck; se falhar: `docker compose restart bot` |
 
@@ -321,6 +408,8 @@ Prefira **Docker**. Detalhes extras: [NIXOS.md](./NIXOS.md).
 
 ## Créditos
 
-- Hallownest Bots · Morgana  
-- Sprites / artwork via [PokeAPI](https://pokeapi.co/)  
-- Áudio: [Lavalink](https://github.com/lavalink-devs/Lavalink) + [youtube-source](https://github.com/lavalink-devs/youtube-source)
+- Hallownest Bots · **Morgana**  
+- Sprites Pokémon via [PokeAPI](https://pokeapi.co/)  
+- Pixel-art da padaria: pack original tema Morgana (`assets/bakery/`)  
+- Áudio: [Lavalink](https://github.com/lavalink-devs/Lavalink) + [youtube-source](https://github.com/lavalink-devs/youtube-source)  
+- Padaria idle inspirada no *loop* de jogos tipo bake.gg (conteúdo e arte próprios)

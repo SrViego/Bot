@@ -20,6 +20,9 @@ const { applyTheme, createEmbed } = require('./systems/theme');
 const { sendWelcome, sendGoodbye } = require('./systems/welcome');
 const { handleLavalinkRawData, handleMusicCommand, initLavalink } = require('./systems/music');
 const { handlePokemonCommand } = require('./systems/pokemon');
+const { handleCleanupCommand } = require('./systems/cleanup');
+const { handleBakeryCommand } = require('./systems/bakery');
+const { handleTicketCommand, handleTicketButton } = require('./systems/tickets');
 
 const token = process.env.DISCORD_TOKEN;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
@@ -48,6 +51,14 @@ client.once(Events.ClientReady, async (readyClient) => {
 
 client.on('raw', (packet) => {
   handleLavalinkRawData(client, packet);
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  try {
+    if (await handleTicketButton(interaction, data)) return;
+  } catch (err) {
+    console.error('interaction:', err);
+  }
 });
 
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -107,8 +118,13 @@ client.on(Events.MessageCreate, async (message) => {
   // Pokémon: só no canal configurado (checa dentro do handler)
   if (handlePokemonCommand(message, data)) return;
 
+  // Padaria antes do !ajuda geral (pra `!ajuda padaria` funcionar)
+  if (handleBakeryCommand(message, data)) return;
+
   if (handleHelpCommand(message)) return;
+  if (handleTicketCommand(message, data)) return;
   if (handleConfigCommand(message, data)) return;
+  if (handleCleanupCommand(message, data)) return;
   if (handleUtilityCommand(message)) return;
   if (handleProfileCommand(message, data)) return;
   if (handleAchievementsCommand(message, data)) return;

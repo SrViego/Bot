@@ -12,7 +12,7 @@ const CATEGORY_META = {
   colecionavel: { emoji: '💎', label: 'Colecionável', color: 0x9b59b6 },
   raro: { emoji: '👑', label: 'Raro', color: 0xf1c40f },
   utilidade: { emoji: '🔧', label: 'Utilidade', color: 0x3498db },
-  titulo: { emoji: '🏷️', label: 'Título', color: 0x1abc9c }
+  titulo: { emoji: '🏷️', label: 'Título', color: 0xf79f5b }
 };
 
 /**
@@ -397,7 +397,7 @@ function buyItem(message, args, data) {
       { name: 'Saldo', value: `**${userData.points}** pts`, inline: true },
       { name: 'No inventário', value: `**${userData.inventory[item.id]}**`, inline: true }
     ],
-    color: 0x2ecc71
+    color: 0xe7644d
   });
   notifyAchievements(message, unlocked);
 }
@@ -622,7 +622,7 @@ function applyUseEffect(message, userData, item, use) {
           { name: '💰 Pontos', value: `**+${gain}**`, inline: true },
           { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
         ],
-        color: 0x2ecc71
+        color: 0xe7644d
       };
     }
     case 'luck': {
@@ -674,7 +674,7 @@ function applyUseEffect(message, userData, item, use) {
       return {
         title: '🏷️ Título equipado',
         description: `${message.author} agora carrega o título:\n## ${userData.equippedTitle}`,
-        color: 0x1abc9c
+        color: 0xf79f5b
       };
     }
     case 'showcase':

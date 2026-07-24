@@ -215,7 +215,7 @@ function gainXp(mon, amount) {
 
 function showHelp(message) {
   message.reply({
-    title: '📕 Pokémon · Isolde',
+    title: '📕 Pokémon · Morgana',
     description: [
       `Canal exclusivo · **${TOTAL}** espécies no Pokédex`,
       '',
@@ -266,7 +266,7 @@ function startAdventure(message, args, data) {
     message.reply({
       title: '🎉 Escolha seu inicial',
       description: `Use \`!pstart id\`\n\n${lines}`,
-      color: 0x2ecc71
+      color: 0xe7644d
     });
     return;
   }
@@ -298,7 +298,7 @@ function startAdventure(message, args, data) {
       { name: '🪙 Coins', value: String(poke.coins), inline: true },
       { name: 'Mochila', value: '5× Poké Ball · 2× Potion', inline: true }
     ],
-    color: 0x2ecc71
+    color: 0xe7644d
   });
 }
 
@@ -445,7 +445,7 @@ function catchWild(message, args, data) {
       `+**${coins}** 🪙${xpNote}`
     ].join('\n'),
     thumbnail: spriteUrl(mon.speciesId),
-    color: 0x2ecc71
+    color: 0xe7644d
   });
 }
 
@@ -608,7 +608,7 @@ function setMainPokemon(message, args, data) {
       title: '⭐ Já é o principal',
       description: `**${poke.team[0].name}** já é o líder do time.`,
       thumbnail: spriteIcon(poke.team[0].speciesId),
-      color: 0x2ecc71
+      color: 0xe7644d
     });
     return;
   }
@@ -738,7 +738,7 @@ function boxToTeam(message, args, data) {
     title: '✅ Adicionado ao time',
     description: `**${mon.name}** entrou no time.`,
     thumbnail: spriteIcon(mon.speciesId),
-    color: 0x2ecc71
+    color: 0xe7644d
   });
 }
 
@@ -881,7 +881,7 @@ function buyPokeItem(message, args, data) {
     message.reply({
       title: '🎒 Time expandido',
       description: `Novo limite: **${poke.teamLimit}** Pokémon no time.`,
-      color: 0x2ecc71
+      color: 0xe7644d
     });
     return;
   }
@@ -897,7 +897,7 @@ function buyPokeItem(message, args, data) {
       { name: 'Saldo', value: `**${poke.coins}** 🪙`, inline: true },
       { name: 'Na mochila', value: String(poke.bag[item.id]), inline: true }
     ],
-    color: 0x2ecc71
+    color: 0xe7644d
   });
 }
 
@@ -988,7 +988,7 @@ function usePokeItem(message, args, data) {
   message.reply({
     title: `${item.emoji} Item usado`,
     description: desc,
-    color: 0x2ecc71
+    color: 0xe7644d
   });
 }
 
@@ -1016,7 +1016,7 @@ function pokeDaily(message, data) {
   message.reply({
     title: '🎁 Daily Pokémon',
     description: `${message.author} recebeu **${coins}** 🪙 e **3** Poké Balls!`,
-    color: 0x2ecc71
+    color: 0xe7644d
   });
 }
 
@@ -1372,7 +1372,7 @@ function requireStart(message, poke) {
   message.reply({
     title: '🌱 Comece a jornada',
     description: 'Use `!pstart` para escolher um inicial neste canal.',
-    color: 0x2ecc71
+    color: 0xe7644d
   });
   return false;
 }
@@ -1390,7 +1390,7 @@ function rarityColor(r) {
   return (
     {
       common: 0x95a5a6,
-      uncommon: 0x2ecc71,
+      uncommon: 0xe7644d,
       rare: 0x3498db,
       legendary: 0xf1c40f
     }[r] || theme.color

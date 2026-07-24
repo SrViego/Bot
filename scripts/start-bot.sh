@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sobe o bot Isolde com o Node do sistema (NixOS).
+# Sobe o bot Morgana com o Node do sistema (NixOS).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -26,5 +26,5 @@ if [[ ! -d node_modules/discord.js ]]; then
 fi
 
 echo "Node: $(node -v)"
-echo "Iniciando Isolde..."
+echo "Iniciando Morgana..."
 exec npm start

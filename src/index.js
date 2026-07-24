@@ -16,7 +16,7 @@ const { handleHelpCommand } = require('./systems/help');
 const { handleConfigCommand } = require('./systems/config');
 const { applyAutoRole } = require('./systems/autoroles');
 const { handleModLogCommand } = require('./systems/modlogs');
-const { applyGreenTheme, createEmbed } = require('./systems/theme');
+const { applyTheme, createEmbed } = require('./systems/theme');
 const { sendWelcome, sendGoodbye } = require('./systems/welcome');
 const { handleLavalinkRawData, handleMusicCommand, initLavalink } = require('./systems/music');
 const { handlePokemonCommand } = require('./systems/pokemon');
@@ -83,7 +83,7 @@ client.on(Events.GuildMemberRemove, async (member) => {
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.guild) return;
 
-  applyGreenTheme(message);
+  applyTheme(message);
   addXpFromMessage(message, data);
 
   if (message.content === '!ping') {

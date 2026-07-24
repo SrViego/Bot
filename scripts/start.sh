@@ -28,5 +28,5 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-echo "==> Bot Isolde..."
+echo "==> Bot Morgana..."
 bash "$ROOT/scripts/start-bot.sh"

@@ -1,4 +1,4 @@
-# Isolde Bot
+# Morgana Bot
 
 Bot de Discord em **Node.js** (`discord.js`) para a comunidade Hallownest.
 
@@ -10,10 +10,10 @@ Bot de Discord em **Node.js** (`discord.js`) para a comunidade Hallownest.
 | 💰 Economia | Pontos, daily, loja de Dirtmouth, inventário, efeitos |
 | ⭐ XP / perfil | Níveis, conquistas, reputação, casamento, minigames |
 | 🛡️ Moderação | Ban, kick, timeout, warns, clear, logs |
-| 🌿 Welcome | Boas-vindas e despedida com **menção** + **GIF** |
+| 🔥 Welcome | Boas-vindas e despedida com **menção** + **GIF** |
 | 📕 Pokémon | Pokédex (~1025 spp.), captura, loja 🪙, time e **PvP** (canal exclusivo) |
 
-Repo: [SrViego/Isolde-bot](https://github.com/SrViego/Isolde-bot)
+Repo: [SrViego/Morgana-bot](https://github.com/SrViego/Morgana-bot)
 
 ---
 
@@ -24,8 +24,8 @@ Não precisa instalar Node nem Java no sistema.
 ### 1. Clonar
 
 ```sh
-git clone https://github.com/SrViego/Isolde-bot.git
-cd Isolde-bot
+git clone https://github.com/SrViego/Morgana-bot.git
+cd Morgana-bot
 ```
 
 ### 2. Arquivo `.env`
@@ -85,8 +85,8 @@ Isso também builda o **Lavalink com o plugin YouTube embutido** (`Dockerfile.la
 
 Sobe dois containers:
 
-- `isolde-lavalink` — áudio / YouTube  
-- `isolde-bot` — o bot  
+- `morgana-lavalink` — áudio / YouTube  
+- `morgana-bot` — o bot  
 
 ### 5. Logs e parar
 
@@ -149,7 +149,7 @@ cp .env.example .env
 ## Estrutura do projeto
 
 ```txt
-Isolde/
+Morgana/
   src/
     index.js
     systems/           # módulos do bot
@@ -312,7 +312,7 @@ Prefira **Docker**. Detalhes extras: [NIXOS.md](./NIXOS.md).
 | Problema | Solução |
 |----------|---------|
 | `TokenInvalid` | Token inválido → reset no Portal → atualize `.env` → `docker compose up -d --force-recreate bot` |
-| Música pula faixas | Bloqueio do YouTube; tente nome+artista; veja `docker logs isolde-lavalink` |
+| Música pula faixas | Bloqueio do YouTube; tente nome+artista; veja `docker logs morgana-lavalink` |
 | Pokémon não responde | Só no canal do `POKEMON_CHANNEL_ID` |
 | Push com “Large files” | Remova `nodejs/`, `java/`, jars do commit (já no `.gitignore`) |
 | Bot sobe antes do Lavalink | O compose espera o healthcheck; se falhar: `docker compose restart bot` |
@@ -321,6 +321,6 @@ Prefira **Docker**. Detalhes extras: [NIXOS.md](./NIXOS.md).
 
 ## Créditos
 
-- Hallownest Bots · Isolde  
+- Hallownest Bots · Morgana  
 - Sprites / artwork via [PokeAPI](https://pokeapi.co/)  
 - Áudio: [Lavalink](https://github.com/lavalink-devs/Lavalink) + [youtube-source](https://github.com/lavalink-devs/youtube-source)

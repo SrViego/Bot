@@ -1,11 +1,11 @@
-# Isolde no NixOS
+# Morgana no NixOS
 
 ## Forma recomendada: Docker (sem Node/Java no sistema)
 
 Precisa so do Docker (ja no teu NixOS) e de um `.env` com token valido.
 
 ```bash
-cd ~/Documentos/HallownestBots/Isolde
+cd ~/Documentos/HallownestBots/Morgana
 
 # token no .env (obrigatorio)
 # DISCORD_TOKEN=...
@@ -17,7 +17,7 @@ docker compose logs -f bot
 ./scripts/docker-down.sh   # parar
 ```
 
-Sobe **dois** containers: `isolde-lavalink` + `isolde-bot`.  
+Sobe **dois** containers: `morgana-lavalink` + `morgana-bot`.  
 Dados em `./data`, config Lavalink em `./lavalink/`.
 
 ---
@@ -82,7 +82,7 @@ GOODBYE_CHANNEL_ID=...
 ## Como rodar
 
 ```bash
-cd ~/Documentos/HallownestBots/Isolde
+cd ~/Documentos/HallownestBots/Morgana
 
 # Terminal 1 — musica
 ./scripts/start-lavalink.sh

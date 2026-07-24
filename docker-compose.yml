@@ -1,4 +1,4 @@
-# Isolde: bot Discord + Lavalink (musica)
+# Morgana: bot Discord + Lavalink (musica)
 # Uso:
 #   docker compose up -d --build
 #   docker compose logs -f
@@ -9,14 +9,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.lavalink
-    image: isolde-lavalink:local
-    container_name: isolde-lavalink
+    image: morgana-lavalink:local
+    container_name: morgana-lavalink
     restart: unless-stopped
     volumes:
       # Só a config — plugins já estão na imagem (sem Permission denied)
       - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
     networks:
-      - isolde
+      - morgana
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/2333'"]
       interval: 10s
@@ -26,7 +26,7 @@ services:
 
   bot:
     build: .
-    container_name: isolde-bot
+    container_name: morgana-bot
     restart: unless-stopped
     env_file:
       - .env
@@ -40,8 +40,8 @@ services:
       lavalink:
         condition: service_healthy
     networks:
-      - isolde
+      - morgana
 
 networks:
-  isolde:
+  morgana:
     driver: bridge

@@ -23,7 +23,7 @@ async function sendWelcome(channel, member) {
       `Olá, ${member}! 🍃`,
       '',
       'Fique à vontade, leia as regras e aproveite o servidor.',
-      'Use `!ajuda` para ver os comandos da Isolde.'
+      'Use `!ajuda` para ver os comandos da Morgana.'
     ].join('\n'),
     thumbnail: user.displayAvatarURL({ size: 256, extension: 'png' }),
     image: gif,

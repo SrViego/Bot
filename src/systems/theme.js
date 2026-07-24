@@ -1,11 +1,12 @@
 const { EmbedBuilder } = require('discord.js');
 
+// Paleta vermelha — alinhada ao wallpaper / Noctalia (coral + laranja)
 const theme = {
-  color: 0x2ecc71,
-  colorAccent: 0x1abc9c,
-  colorWarn: 0xf1c40f,
-  colorError: 0xe74c3c,
-  colorInfo: 0x3498db,
+  color: 0xe7644d,
+  colorAccent: 0xf79f5b,
+  colorWarn: 0xf7c767,
+  colorError: 0xc6463d,
+  colorInfo: 0xc46b5a,
   name: 'Morgana',
   footer: '✦ Hallownest Bots · Morgana',
   // GIFs padrao (podem ser sobrescritos no .env)
@@ -139,7 +140,7 @@ function asThemedPayload(payload) {
   return payload;
 }
 
-function applyGreenTheme(message) {
+function applyTheme(message) {
   if (!message || patchedMessages.has(message)) return message;
 
   patchedMessages.add(message);
@@ -156,7 +157,7 @@ function applyGreenTheme(message) {
   return message;
 }
 
-async function sendGreen(channel, payload) {
+async function sendThemed(channel, payload) {
   return channel.send(asThemedPayload(payload));
 }
 
@@ -165,7 +166,13 @@ function replyPretty(message, options) {
   return message.reply(buildPayload(options));
 }
 
+// aliases legados (código antigo)
+const applyGreenTheme = applyTheme;
+const sendGreen = sendThemed;
+
 module.exports = {
+  applyTheme,
+  sendThemed,
   applyGreenTheme,
   sendGreen,
   createEmbed,

@@ -8,7 +8,7 @@ const { createEmbed, theme } = require('./theme');
 
 const HELP_PAGES = [
   {
-    title: '📗 Guia da Isolde · Geral',
+    title: '📕 Guia da Morgana · Geral',
     description: 'Página **1/5** — visão geral.\nBotões abaixo ou `!ajuda 2`, `!ajuda 3`…',
     fields: [
       {
@@ -26,7 +26,7 @@ const HELP_PAGES = [
     ]
   },
   {
-    title: '📗 Guia · Economia & loja',
+    title: '📕 Guia · Economia & loja',
     description: 'Página **2/5** — pontos, daily e loja de Dirtmouth.',
     fields: [
       {
@@ -45,7 +45,7 @@ const HELP_PAGES = [
     ]
   },
   {
-    title: '📗 Guia · Música',
+    title: '📕 Guia · Música',
     description: 'Página **3/5** — precisa do Lavalink (Docker ou local).',
     fields: [
       {
@@ -60,7 +60,7 @@ const HELP_PAGES = [
     ]
   },
   {
-    title: '📗 Guia · Config & moderação',
+    title: '📕 Guia · Config & moderação',
     description: 'Página **4/5** — para a staff do servidor.',
     fields: [
       {
@@ -76,7 +76,7 @@ const HELP_PAGES = [
     ]
   },
   {
-    title: '📗 Guia · Pokémon',
+    title: '📕 Guia · Pokémon',
     description:
       'Página **5/5** — **apenas no canal Pokémon**.\nPokédex nacional · loja 🪙 · PvP.',
     fields: [

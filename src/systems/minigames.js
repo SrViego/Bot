@@ -54,7 +54,7 @@ function playCoinflip(message, args, data) {
         { name: '💵 Lucro', value: `**+${bet}**`, inline: true },
         { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
       ],
-      color: 0x2ecc71
+      color: 0xe7644d
     });
   } else {
     userData.points -= bet;
@@ -103,7 +103,7 @@ function playGuess(message, args, data) {
         { name: '💵 Prêmio', value: `**+${prize}** (4×)`, inline: true },
         { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
       ],
-      color: 0x2ecc71
+      color: 0xe7644d
     });
   } else {
     userData.points -= bet;

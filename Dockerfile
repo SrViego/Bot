@@ -1,4 +1,4 @@
-# Bot Isolde — Node no container (sem Node no NixOS)
+# Bot Morgana — Node no container (sem Node no NixOS)
 FROM node:22-bookworm-slim
 
 WORKDIR /app

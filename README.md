@@ -13,7 +13,7 @@ Bot de Discord em **Node.js** (`discord.js`) para a comunidade Hallownest.
 | 🔥 Welcome | Boas-vindas e despedida com **menção** + **GIF** |
 | 📕 Pokémon | Pokédex (~1025 spp.), captura, loja 🪙, time e **PvP** (canal exclusivo) |
 
-Repo: [SrViego/Morgana-bot](https://github.com/SrViego/Morgana-bot)
+Repo: [SrViego/Bot](https://github.com/SrViego/Bot)
 
 ---
 
@@ -24,8 +24,8 @@ Não precisa instalar Node nem Java no sistema.
 ### 1. Clonar
 
 ```sh
-git clone https://github.com/SrViego/Morgana-bot.git
-cd Morgana-bot
+git clone https://github.com/SrViego/Bot.git
+cd Bot
 ```
 
 ### 2. Arquivo `.env`

@@ -6,6 +6,17 @@ const raw = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'pokemon-data.json'), 'utf8')
 );
 
+/** @type {Record<string, { to: number, minLevel: number, method?: string }>} */
+let evolutionMap = {};
+const evoPath = path.join(__dirname, '..', '..', 'data', 'pokemon-evolutions.json');
+try {
+  if (fs.existsSync(evoPath)) {
+    evolutionMap = JSON.parse(fs.readFileSync(evoPath, 'utf8'));
+  }
+} catch (err) {
+  console.error('pokemon evolutions load:', err.message);
+}
+
 /** @type {Map<number, object>} */
 const byId = new Map(raw.map((p) => [p.id, p]));
 /** @type {Map<string, object>} */
@@ -229,6 +240,27 @@ function spriteIcon(id) {
   return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
 }
 
+/** Próxima evolução por nível, se houver */
+function getEvolution(speciesId) {
+  const e = evolutionMap[String(speciesId)] || evolutionMap[speciesId];
+  if (!e || !e.to) return null;
+  return {
+    to: Number(e.to),
+    minLevel: Number(e.minLevel) || 20,
+    method: e.method || 'level'
+  };
+}
+
+function canEvolve(mon) {
+  if (!mon) return null;
+  const evo = getEvolution(mon.speciesId);
+  if (!evo) return null;
+  if (mon.level < evo.minLevel) return null;
+  const next = getPokemon(evo.to);
+  if (!next) return null;
+  return { evo, next };
+}
+
 module.exports = {
   getAllPokemon,
   getPokemon,
@@ -238,6 +270,8 @@ module.exports = {
   randomWildSpecies,
   spriteUrl,
   spriteIcon,
+  getEvolution,
+  canEvolve,
   TYPE_EMOJI,
   TYPE_CHART,
   RARITY_CATCH,

@@ -11,6 +11,7 @@ COPY src ./src
 COPY assets ./assets
 # Pokédex estática (runtime database.json vem do volume)
 COPY data/pokemon-data.json ./data/pokemon-data.json
+COPY data/pokemon-evolutions.json ./data/pokemon-evolutions.json
 RUN mkdir -p /app/data
 
 ENV NODE_ENV=production

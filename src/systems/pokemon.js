@@ -11,6 +11,8 @@ const {
   randomWildSpecies,
   spriteUrl,
   spriteIcon,
+  getEvolution,
+  canEvolve,
   RARITY_CATCH,
   TOTAL,
   TYPE_EMOJI
@@ -88,6 +90,9 @@ function handlePokemonCommand(message, data) {
     '!plead': () => setMainPokemon(message, args, data),
     '!pmon': () => showMainPokemon(message, data),
     '!ppoke': () => showMainPokemon(message, data),
+    '!pevolve': () => evolveMain(message, data),
+    '!pevoluir': () => evolveMain(message, data),
+    '!pxp': () => showMainPokemon(message, data),
     '!ploja': () => showPokeShop(message, data),
     '!pshop': () => showPokeShop(message, data),
     '!pbuy': () => buyPokeItem(message, args, data),
@@ -163,7 +168,7 @@ function createOwned(species, level = 5) {
     stats: { ...stats },
     maxHp: stats.hp,
     hp: stats.hp,
-    moves: generateMoves(species.types)
+    moves: generateMoves(species.types, level)
   };
 }
 
@@ -175,40 +180,117 @@ function scaleStats(base, level) {
   return { hp: h, atk: f(atk), def: f(def), spa: f(spa), spd: f(spd), spe: f(spe) };
 }
 
-function generateMoves(types) {
-  const moves = [];
+/**
+ * Golpes por nível — evita nível baixo com Hyper Beam / Hydro Pump.
+ * Unlock: 1 (fraco), 10, 20, 32. Poder sobe devagar e tem teto.
+ */
+function generateMoves(types, level = 1) {
+  level = Math.max(1, Math.min(100, Number(level) || 1));
   const primary = types[0] || 'Normal';
-  const secondary = types[1] || 'Normal';
+  const secondary = types[1] || primary;
   const poolA = MOVE_POOL[primary] || MOVE_POOL.Normal;
   const poolB = MOVE_POOL[secondary] || MOVE_POOL.Normal;
-  moves.push({ name: poolA[0], type: primary, power: 40 });
-  moves.push({ name: poolA[1] || poolA[0], type: primary, power: 70 });
-  moves.push({ name: poolB[0], type: secondary, power: 45 });
-  moves.push({ name: poolB[2] || poolB[1] || poolB[0], type: secondary, power: 90 });
-  return moves;
+
+  // nameIndex no pool: 0 fraco … 3 forte
+  const templates = [
+    { name: poolA[0], type: primary, unlock: 1, base: 35, cap: 50 },
+    { name: poolA[1] || poolA[0], type: primary, unlock: 10, base: 50, cap: 70 },
+    { name: poolB[0], type: secondary, unlock: 20, base: 55, cap: 80 },
+    {
+      name: poolB[2] || poolB[1] || poolB[0],
+      type: secondary,
+      unlock: 32,
+      base: 65,
+      cap: 90
+    }
+  ];
+
+  const moves = [];
+  for (const t of templates) {
+    if (level < t.unlock) continue;
+    const steps = Math.floor(Math.max(0, level - t.unlock) / 10);
+    const power = Math.min(t.cap, t.base + steps * 5);
+    moves.push({
+      name: t.name,
+      type: t.type,
+      power,
+      unlock: t.unlock
+    });
+  }
+
+  if (!moves.length) {
+    moves.push({ name: 'Tackle', type: 'Normal', power: 35, unlock: 1 });
+  }
+  return moves.slice(0, 4);
 }
 
+/** XP necessário para ir de `level` → level+1 */
 function neededXp(level) {
-  return 40 + level * 20;
+  // curva um pouco mais pesada no fim
+  return Math.floor(30 + level * 18 + level * level * 0.35);
 }
 
+/**
+ * Dá XP e aplica level-ups (stats + golpes).
+ * @returns {{ leveled: number, unlockedMoves: string[], canEvolve: object|null }}
+ */
 function gainXp(mon, amount) {
-  mon.xp += amount;
+  if (!mon || amount <= 0) {
+    return { leveled: 0, unlockedMoves: [], canEvolve: null };
+  }
+  if (!Number.isInteger(mon.xp)) mon.xp = 0;
+  if (!Number.isInteger(mon.level)) mon.level = 1;
+
+  mon.xp += Math.floor(amount);
   let leveled = 0;
+  const unlockedMoves = [];
+  const prevMoveNames = new Set((mon.moves || []).map((m) => m.name));
+
   while (mon.xp >= neededXp(mon.level) && mon.level < 100) {
     mon.xp -= neededXp(mon.level);
     mon.level += 1;
     leveled += 1;
     const species = getPokemon(mon.speciesId);
     if (species) {
-      const ratio = mon.hp / mon.maxHp;
+      const ratio = mon.maxHp > 0 ? mon.hp / mon.maxHp : 1;
       mon.stats = scaleStats(species.stats, mon.level);
       mon.maxHp = mon.stats.hp;
       mon.hp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.maxHp * ratio)));
-      mon.moves = generateMoves(species.types);
+      mon.moves = generateMoves(species.types, mon.level);
+      for (const m of mon.moves) {
+        if (!prevMoveNames.has(m.name)) {
+          unlockedMoves.push(m.name);
+          prevMoveNames.add(m.name);
+        }
+      }
     }
   }
-  return leveled;
+
+  return { leveled, unlockedMoves, canEvolve: canEvolve(mon) };
+}
+
+function formatXpBar(mon) {
+  if (mon.level >= 100) return 'Nv.100 · MAX';
+  const need = neededXp(mon.level);
+  const have = mon.xp || 0;
+  const ratio = Math.min(1, have / Math.max(1, need));
+  const filled = Math.round(ratio * 10);
+  const bar = `${'█'.repeat(filled)}${'░'.repeat(10 - filled)}`;
+  return `XP ${bar} **${have}/${need}**`;
+}
+
+function formatLevelUpNote(mon, result) {
+  if (!result || !result.leveled) return '';
+  const parts = [`**${mon.name}** subiu **${result.leveled}** nível(is)! → Nv.**${mon.level}**`];
+  if (result.unlockedMoves?.length) {
+    parts.push(`Novos golpes: ${result.unlockedMoves.map((n) => `**${n}**`).join(', ')}`);
+  }
+  if (result.canEvolve) {
+    parts.push(
+      `✨ Pode evoluir para **${result.canEvolve.next.name}** (Nv.${result.canEvolve.evo.minLevel}+) — \`!pevolve\``
+    );
+  }
+  return parts.join('\n');
 }
 
 /* ───────────── commands ───────────── */
@@ -232,6 +314,11 @@ function showHelp(message) {
       '',
       '**Loja Pokémon** (pokécoins 🪙)',
       '`!ploja` · `!pbuy id` · `!pbag` · `!puse potion` · `!pdaily`',
+      '',
+      '**XP & evolução**',
+      '`!pmon` / `!pxp` — nível, XP e golpes do principal',
+      '`!pevolve` — evoluir o principal (se elegível)',
+      'Golpes liberam nos Nv. **1 / 10 / 20 / 32** (poder sobe com o nível)',
       '',
       '**PvP**',
       '`!pbattle @user` · `!paccept` · `!pdeny`',
@@ -419,8 +506,8 @@ function catchWild(message, args, data) {
   poke.wild = null;
   poke.catches += 1;
 
-  // XP share / team xp
-  const xpGain = 15 + wild.level * 2;
+  // XP para o principal (e um pouco pro capturado se entrou no time)
+  const xpGain = 18 + wild.level * 3;
   let xpNote = '';
   if (poke.team[0]) {
     let mult = 1;
@@ -428,12 +515,16 @@ function catchWild(message, args, data) {
       mult = 1.5;
       poke.expShareLeft -= 1;
     }
-    const lv = gainXp(poke.team[0], Math.floor(xpGain * mult));
-    if (lv) xpNote = `\n${poke.team[0].name} subiu **${lv}** nível(is)!`;
+    const res = gainXp(poke.team[0], Math.floor(xpGain * mult));
+    const note = formatLevelUpNote(poke.team[0], res);
+    if (note) xpNote = `\n${note}`;
+    else xpNote = `\n${poke.team[0].name} +**${Math.floor(xpGain * mult)}** XP`;
   }
 
   const coins = 20 + wild.level * 3;
   poke.coins += coins;
+  // capturado já no nível selvagem — garante moves corretos pro nível
+  mon.moves = generateMoves(mon.types, mon.level);
   saveData(data);
 
   message.reply({
@@ -642,11 +733,29 @@ function showMainPokemon(message, data) {
     return;
   }
 
+  // sincroniza golpes com o nível atual (migra saves antigos com power 90)
+  mon.moves = generateMoves(mon.types || getPokemon(mon.speciesId)?.types || ['Normal'], mon.level);
+
   const moves = (mon.moves || [])
-    .map((m, i) => `\`${i + 1}\` **${m.name}** (${m.type} · ${m.power})`)
+    .map((m, i) => `\`${i + 1}\` **${m.name}** (${m.type} · poder **${m.power}**)`)
     .join('\n');
 
+  const locked = [1, 10, 20, 32]
+    .filter((lv) => mon.level < lv)
+    .map((lv) => `Nv.${lv}`)
+    .join(', ');
+
   const species = getPokemon(mon.speciesId);
+  const evo = getEvolution(mon.speciesId);
+  const evoReady = canEvolve(mon);
+  let evoLine = 'Não evolui (ou sem dados)';
+  if (evo) {
+    const next = getPokemon(evo.to);
+    evoLine = evoReady
+      ? `✨ Pronto → **${next?.name || evo.to}** — use \`!pevolve\``
+      : `→ **${next?.name || evo.to}** no Nv.**${evo.minLevel}** (faltam ${Math.max(0, evo.minLevel - mon.level)})`;
+  }
+
   const [hp, atk, def, spa, spd, spe] = [
     mon.stats?.hp ?? mon.maxHp,
     mon.stats?.atk ?? '—',
@@ -661,10 +770,14 @@ function showMainPokemon(message, data) {
     description: [
       `${message.author}`,
       `Nível **${mon.level}** · ${formatTypes(mon.types)}`,
+      formatXpBar(mon),
       `HP ${hpBar(mon.hp, mon.maxHp, 10)}`,
       '',
       '**Golpes**',
-      moves || '_sem golpes_'
+      moves || '_sem golpes_',
+      locked ? `_Próximos slots: ${locked}_` : '_Todos os slots de golpe liberados_',
+      '',
+      `**Evolução:** ${evoLine}`
     ].join('\n'),
     thumbnail: spriteUrl(mon.speciesId),
     fields: [
@@ -675,8 +788,75 @@ function showMainPokemon(message, data) {
       { name: 'SPE', value: String(spe), inline: true },
       { name: 'Raridade', value: mon.rarity || species?.rarity || '—', inline: true }
     ],
-    footer: { text: 'Trocar líder: !pmain 2  ·  Time: !pteam' },
+    footer: { text: 'Trocar líder: !pmain 2  ·  Evoluir: !pevolve  ·  Time: !pteam' },
     color: 0xf1c40f
+  });
+}
+
+function evolveMain(message, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const poke = ensurePoke(userData);
+  if (!requireStart(message, poke)) return;
+
+  const mon = poke.team[0];
+  if (!mon) {
+    message.reply({ title: 'Sem líder', description: 'Time vazio.', color: 0xe74c3c });
+    return;
+  }
+
+  const ready = canEvolve(mon);
+  if (!ready) {
+    const evo = getEvolution(mon.speciesId);
+    if (!evo) {
+      message.reply({
+        title: '🔮 Sem evolução',
+        description: `**${mon.name}** não tem evolução cadastrada (ou já é a forma final neste bot).`,
+        color: theme.colorWarn
+      });
+      return;
+    }
+    message.reply({
+      title: '🔮 Ainda não',
+      description: [
+        `**${mon.name}** evolui no **Nv.${evo.minLevel}** (está no **${mon.level}**).`,
+        `Faltam **${evo.minLevel - mon.level}** níveis · ${formatXpBar(mon)}`,
+        'Capture selvagens (`!pwild` / `!pcatch`) ou vença PvP para ganhar XP.'
+      ].join('\n'),
+      thumbnail: spriteIcon(mon.speciesId),
+      color: theme.colorWarn
+    });
+    return;
+  }
+
+  const { evo, next } = ready;
+  const oldName = mon.name;
+  const oldId = mon.speciesId;
+  const ratio = mon.maxHp > 0 ? mon.hp / mon.maxHp : 1;
+
+  mon.speciesId = next.id;
+  mon.name = next.name;
+  mon.types = [...next.types];
+  mon.rarity = next.rarity;
+  mon.stats = scaleStats(next.stats, mon.level);
+  mon.maxHp = mon.stats.hp;
+  mon.hp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.maxHp * ratio)));
+  mon.moves = generateMoves(mon.types, mon.level);
+
+  saveData(data);
+
+  message.reply({
+    title: '✨ Evolução!',
+    description: [
+      `${message.author}`,
+      `**${oldName}** evoluiu para **${next.name}**!`,
+      `Nível **${mon.level}** · ${formatTypes(mon.types)}`,
+      '',
+      '**Novos golpes**',
+      (mon.moves || []).map((m, i) => `\`${i + 1}\` **${m.name}** (${m.type} · ${m.power})`).join('\n')
+    ].join('\n'),
+    thumbnail: spriteUrl(next.id),
+    image: spriteUrl(next.id),
+    color: theme.color
   });
 }
 
@@ -953,19 +1133,12 @@ function usePokeItem(message, args, data) {
     mon.hp = Math.min(mon.maxHp, mon.hp + (item.heal || 40));
     desc = `**${mon.name}** curou **${mon.hp - before}** HP → ${mon.hp}/${mon.maxHp}`;
   } else if (item.id === 'rarecandy') {
-    const lv = gainXp(mon, neededXp(mon.level));
+    // 1 nível exato
     mon.xp = 0;
-    if (!lv) {
-      mon.level = Math.min(100, mon.level + 1);
-      const species = getPokemon(mon.speciesId);
-      if (species) {
-        const ratio = mon.hp / mon.maxHp;
-        mon.stats = scaleStats(species.stats, mon.level);
-        mon.maxHp = mon.stats.hp;
-        mon.hp = Math.max(1, Math.floor(mon.maxHp * ratio));
-      }
-    }
-    desc = `**${mon.name}** agora é Nv.**${mon.level}**!`;
+    const res = gainXp(mon, neededXp(mon.level));
+    mon.xp = 0;
+    const note = formatLevelUpNote(mon, res);
+    desc = note || `**${mon.name}** agora é Nv.**${mon.level}**!`;
   } else if (item.id === 'expshare') {
     poke.expShareLeft = (poke.expShareLeft || 0) + (item.charges || 10);
     desc = `Exp. Share ativo: **${poke.expShareLeft}** capturas com bônus.`;
@@ -1166,9 +1339,15 @@ function acceptPvp(message, data) {
     ids: [aId, bId]
   };
 
-  // heal to full for fair pvp snapshot
+  // heal to full + golpes balanceados pro nível (migra saves antigos)
   for (const id of battle.ids) {
     const m = battle.players[id].mon;
+    m.moves = generateMoves(m.types || ['Normal'], m.level || 1);
+    const species = getPokemon(m.speciesId);
+    if (species) {
+      m.stats = scaleStats(species.stats, m.level || 1);
+      m.maxHp = m.stats.hp;
+    }
     m.hp = m.maxHp;
   }
 
@@ -1298,7 +1477,16 @@ function endBattle(message, data, battle, winnerId, loserId, preamble = []) {
   // sync HP back lightly (winner full, loser 1 hp)
   if (wPoke.team[0]) wPoke.team[0].hp = wPoke.team[0].maxHp;
   if (lPoke.team[0]) lPoke.team[0].hp = Math.max(1, Math.floor(lPoke.team[0].maxHp * 0.25));
-  if (wPoke.team[0]) gainXp(wPoke.team[0], 40);
+  let xpLine = '';
+  if (wPoke.team[0]) {
+    const res = gainXp(wPoke.team[0], 45 + (wPoke.team[0].level || 1));
+    const note = formatLevelUpNote(wPoke.team[0], res);
+    xpLine = note ? `\n${note}` : `\n${wPoke.team[0].name} +XP de vitória`;
+  }
+  // perdedor ganha um pouco de XP também
+  if (lPoke.team[0]) {
+    gainXp(lPoke.team[0], 12);
+  }
   saveData(data);
 
   message.channel.send({
@@ -1306,8 +1494,8 @@ function endBattle(message, data, battle, winnerId, loserId, preamble = []) {
     description: [
       ...preamble,
       '',
-      `Vencedor: <@${winnerId}> (+80 🪙)`,
-      `Derrota: <@${loserId}>`
+      `Vencedor: <@${winnerId}> (+80 🪙)${xpLine}`,
+      `Derrota: <@${loserId}> (+XP consolação)`
     ].join('\n'),
     color: 0xf1c40f,
     allowedMentions: { users: [winnerId, loserId] }

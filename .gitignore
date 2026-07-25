@@ -11,6 +11,7 @@ npm-debug.log*
 data/*
 !data/.gitkeep
 !data/pokemon-data.json
+!data/pokemon-evolutions.json
 
 # binários portáteis / pesados (ficam no PC, fora do Git)
 nodejs/

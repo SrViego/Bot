@@ -521,10 +521,22 @@ function catchWild(message, args, data) {
     else xpNote = `\n${poke.team[0].name} +**${Math.floor(xpGain * mult)}** XP`;
   }
 
-  const coins = 20 + wild.level * 3;
+  const raidMult = (() => {
+    try {
+      return require('./guild-events').getPokeCatchMultiplier(data, message.guild.id);
+    } catch {
+      return 1;
+    }
+  })();
+  const coins = Math.floor((20 + wild.level * 3) * raidMult);
   poke.coins += coins;
   // capturado já no nível selvagem — garante moves corretos pro nível
   mon.moves = generateMoves(mon.types, mon.level);
+  try {
+    require('./quests').trackQuest(data, message.guild.id, message.author.id, 'poke_catch', 1, false);
+  } catch {
+    /* ignore */
+  }
   saveData(data);
 
   message.reply({
@@ -533,7 +545,7 @@ function catchWild(message, args, data) {
       `${message.author} capturou **${mon.name}** Nv.${mon.level}!`,
       `Com: ${ball.emoji} **${ball.name}**`,
       `Guardado em: **${placed}**`,
-      `+**${coins}** 🪙${xpNote}`
+      `+**${coins}** 🪙${raidMult > 1 ? ' ⚔️ raid' : ''}${xpNote}`
     ].join('\n'),
     thumbnail: spriteUrl(mon.speciesId),
     color: 0xe7644d
@@ -1486,6 +1498,13 @@ function endBattle(message, data, battle, winnerId, loserId, preamble = []) {
   // perdedor ganha um pouco de XP também
   if (lPoke.team[0]) {
     gainXp(lPoke.team[0], 12);
+  }
+  try {
+    const { trackQuest } = require('./quests');
+    trackQuest(data, message.guild.id, winnerId, 'poke_pvp', 1, false);
+    trackQuest(data, message.guild.id, loserId, 'poke_pvp', 1, false);
+  } catch {
+    /* ignore */
   }
   saveData(data);
 

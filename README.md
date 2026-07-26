@@ -17,6 +17,14 @@ Tema visual dos embeds: **vermelho coral** (`#E7644D` / `#F79F5B`).
 | 🔥 Welcome | Boas-vindas e despedida com **menção** + **GIF** |
 | 📕 Pokémon | Pokédex (~1025 spp.), captura, loja 🪙, time e **PvP** (canal exclusivo) |
 
+| 📋 Quests | Diárias/semanais com recompensas mistas |
+| 💱 Câmbio | Pontos ↔ padaria ↔ poke (taxa 45%) |
+| ✨ Cosméticos | Títulos, molduras e badges no perfil |
+| 🎪 Eventos | Happy Hour, festival padaria, raid, chefe |
+| ⭐ Starboard | Destaques por reação |
+| 📜 Lore | Citações Hallownest |
+
+
 Repo: [SrViego/Bot](https://github.com/SrViego/Bot)
 
 ---
@@ -249,13 +257,27 @@ Loop: **assar → esperar → servir → XP/nível → mais fornos**.
 
 | Comando | Função |
 |---------|--------|
-| `!padaria` | Status + **imagem pixel-art** da loja |
+| `!padaria` | Status + **imagem pixel-art** (só no canal da padaria) |
 | `!assar [receita]` | Usa um forno livre (`pao`, `croissant`…) |
 | `!servir` | Vende o que ficou pronto |
 | `!receitas` | Lista desbloqueadas / bloqueadas |
 | `!forno` | Compra forno extra (moedas da padaria) |
+| `!upgrade` | Loja de melhorias (gasta 🪙 da padaria) |
+| `!upgrade <id>` | Compra: `speed` `profit` `mastery` `luck` `charm` |
 | `!rankpadaria` | Ranking do servidor |
 | `!padariahelp` / `!ajuda padaria` | Guia rápido |
+
+**Canal:** só `BAKERY_CHANNEL_ID` (padrão `1530334104334237939`).
+
+**Upgrades da padaria** (permanentes, com moedas da padaria):
+
+| id | Efeito |
+|----|--------|
+| `speed` | −4% tempo de forno por nível (máx 8 → −32%) |
+| `profit` | +4% moedas ao servir (máx 8 → +32%) |
+| `mastery` | +4% XP da padaria (máx 8 → +32%) |
+| `luck` | +3% chance de 2× moedas (máx 5 → 15%) |
+| `charm` | +2 🪙 fixos por item servido (máx 5 → +10) |
 
 Sprites em `assets/bakery/` (já vem um pack no tema Morgana).  
 Troque os PNGs e reinicie o bot — ver `assets/bakery/README.md`.

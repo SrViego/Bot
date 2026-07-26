@@ -1,6 +1,8 @@
 const { getUserData, saveData, hasActiveEffect } = require("./database");
 const { grantAchievements, notifyAchievements } = require("./achievements");
 const { progressBar } = require("./theme");
+const { getXpMultiplier } = require("./guild-events");
+const { trackQuest } = require("./quests");
 
 const xpCooldown = 60 * 1000;
 
@@ -25,8 +27,11 @@ function addXpFromMessage(message, data) {
     delete userData.effects.xpBoostUntil;
     delete userData.effects.xpBoostMult;
   }
+  const hh = getXpMultiplier(data, message.guild.id);
+  if (hh > 1) gainedXp = Math.max(1, Math.floor(gainedXp * hh));
   userData.xp += gainedXp;
   userData.lastXpAt = now;
+  trackQuest(data, message.guild.id, message.author.id, "messages", 1, false);
 
   const neededXp = getNeededXp(userData.level);
   if (userData.xp >= neededXp) {

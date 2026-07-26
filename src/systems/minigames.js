@@ -1,5 +1,7 @@
 const { getUserData, saveData } = require('./database');
 const { theme } = require('./theme');
+const { settlePendingBets } = require('./bets');
+const { trackQuest } = require('./quests');
 
 const gameCooldown = 30 * 1000;
 
@@ -94,28 +96,36 @@ function playCoinflip(message, args, data) {
     // odds 1:1 → lucro = aposta (fica com o dobro do valor arriscado)
     userData.points += bet;
     userData.minigames.wins += 1;
-    message.reply({
-      title: `🪙 Deu ${result}!`,
-      description: `${emoji} A moeda caiu em **${result}**.\n${message.author} apostou em **${choice}** e **ganhou**!`,
-      fields: [
-        { name: '💵 Lucro', value: `**+${bet}**`, inline: true },
-        { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
-      ],
-      color: theme.color
-    });
   } else {
     userData.points = Math.max(0, userData.points - bet);
     userData.minigames.losses += 1;
-    message.reply({
-      title: `🪙 Deu ${result}!`,
-      description: `${emoji} A moeda caiu em **${result}**.\n${message.author} apostou em **${choice}** e **perdeu**.`,
-      fields: [
+  }
+
+  trackQuest(data, message.guild.id, message.author.id, 'minigame', 1, false);
+  const betLines = settlePendingBets(data, message.guild.id, result);
+
+  const fields = won
+    ? [
+        { name: '💵 Lucro', value: `**+${bet}**`, inline: true },
+        { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
+      ]
+    : [
         { name: '📉 Perda', value: `**-${bet}**`, inline: true },
         { name: '🏦 Saldo', value: `**${userData.points}**`, inline: true }
-      ],
-      color: theme.colorError
-    });
+      ];
+
+  if (betLines) {
+    fields.push({ name: '🎲 Apostas da galera', value: betLines.slice(0, 1000), inline: false });
   }
+
+  message.reply({
+    title: `🪙 Deu ${result}!`,
+    description: won
+      ? `${emoji} A moeda caiu em **${result}**.\n${message.author} apostou em **${choice}** e **ganhou**!`
+      : `${emoji} A moeda caiu em **${result}**.\n${message.author} apostou em **${choice}** e **perdeu**.`,
+    fields,
+    color: won ? theme.color : theme.colorError
+  });
 
   saveData(data);
 }

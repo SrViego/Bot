@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const { Client, Events, GatewayIntentBits } = require('discord.js');
+const { Client, Events, GatewayIntentBits, Partials } = require('discord.js');
 const { getGuildData, loadData } = require('./systems/database');
 const { handleMarriageCommand } = require('./systems/marriage');
 const { handlePointsCommand } = require('./systems/points');
@@ -21,8 +21,17 @@ const { sendWelcome, sendGoodbye } = require('./systems/welcome');
 const { handleLavalinkRawData, handleMusicCommand, initLavalink } = require('./systems/music');
 const { handlePokemonCommand } = require('./systems/pokemon');
 const { handleCleanupCommand } = require('./systems/cleanup');
-const { handleBakeryCommand } = require('./systems/bakery');
+const { handleBakeryCommand, processOvenNotifications } = require('./systems/bakery');
 const { handleTicketCommand, handleTicketButton } = require('./systems/tickets');
+const { handleQuestCommand } = require('./systems/quests');
+const { handleEventCommand } = require('./systems/guild-events');
+const { handleExchangeCommand } = require('./systems/economy-bridge');
+const { handleCosmeticsCommand } = require('./systems/cosmetics');
+const { handleLoreCommand } = require('./systems/lore');
+const { handleStarboardCommand, handleStarboardReaction } = require('./systems/starboard');
+const { handleBetCommand } = require('./systems/bets');
+const { handleServerStatsCommand } = require('./systems/server-stats');
+const { registerSlashCommands, handleSlashInteraction } = require('./systems/slash');
 
 const token = process.env.DISCORD_TOKEN;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
@@ -40,13 +49,22 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
-  ]
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions
+  ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot online como ${readyClient.user.tag}`);
   await initLavalink(readyClient);
+  await registerSlashCommands(readyClient);
+  // forno pronto (DM) a cada 45s
+  setInterval(() => {
+    processOvenNotifications(readyClient, data).catch((err) =>
+      console.error('oven notify:', err.message)
+    );
+  }, 45_000);
 });
 
 client.on('raw', (packet) => {
@@ -56,8 +74,17 @@ client.on('raw', (packet) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (await handleTicketButton(interaction, data)) return;
+    if (await handleSlashInteraction(interaction, data)) return;
   } catch (err) {
     console.error('interaction:', err);
+  }
+});
+
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+  try {
+    await handleStarboardReaction(reaction, user, data);
+  } catch (err) {
+    console.error('reaction:', err);
   }
 });
 
@@ -121,6 +148,15 @@ client.on(Events.MessageCreate, async (message) => {
   // Padaria antes do !ajuda geral (pra `!ajuda padaria` funcionar)
   if (handleBakeryCommand(message, data)) return;
 
+  if (handleQuestCommand(message, data)) return;
+  if (handleEventCommand(message, data)) return;
+  if (handleExchangeCommand(message, data)) return;
+  if (handleCosmeticsCommand(message, data)) return;
+  if (handleLoreCommand(message)) return;
+  if (handleStarboardCommand(message, data)) return;
+  if (handleBetCommand(message, data)) return;
+  if (handleServerStatsCommand(message, data)) return;
+
   if (handleHelpCommand(message)) return;
   if (handleTicketCommand(message, data)) return;
   if (handleConfigCommand(message, data)) return;
@@ -136,7 +172,7 @@ client.on(Events.MessageCreate, async (message) => {
   if (handlePointsCommand(message, data)) return;
   if (handleShopCommand(message, data)) return;
   if (handleXpCommand(message, data)) return;
-  if (await handleMusicCommand(message)) return;
+  if (await handleMusicCommand(message, data)) return;
 });
 
 async function getTextChannel(guild, channelId) {

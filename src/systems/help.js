@@ -14,44 +14,51 @@ const HELP_PAGES = [
       {
         name: '🛠️ Utilidade',
         value:
-          '`!ping` `!ajuda [página]` `!avatar` `!userinfo` `!serverinfo` `!say` `!limpeza`\n`!ticket [motivo]` · `!suporte` · `!pedirajuda`'
+          '`!ping` `!ajuda [página]` `!avatar` `!userinfo` `!serverinfo` `!say` `!limpeza`\n`!ticket` · `!serverstats` · `!lore`'
       },
-
       {
         name: '🌿 Perfil & social',
-        value: '`!perfil` `!conquistas` `!rep @user` `!rankrep` `!casar` `!casamento`'
+        value: '`!perfil` `!cosmetico` `!conquistas` `!rep @user` `!casar` `!starboard` (staff)'
       },
       {
-        name: '⭐ XP',
-        value: '`!xp` `!level` `!rankxp` — sobe conversando (cooldown 60s)'
+        name: '⭐ XP & quests',
+        value: '`!xp` `!rankxp` · `!quest` / `!quest pegar` (diárias + semanais)'
       }
     ]
   },
   {
     title: '📕 Guia · Economia & loja',
-    description: 'Página **2/6** — pontos, daily e loja de Dirtmouth.',
+    description: 'Página **2/6** — pontos, câmbio, apostas e loja.',
     fields: [
       {
         name: '💰 Pontos',
         value: '`!pontos` `!daily` `!rankpontos` `!efeitos`'
       },
       {
-        name: '🏪 Loja (pontos do servidor)',
-        value:
-          '`!loja [categoria]` `!item id` `!comprar id [qtd]` `!vender id [qtd]`\n`!inventario` `!usar id` `!presentear @user id`'
+        name: '💱 Câmbio (taxa 35%)',
+        value: '`!cambio pontos|padaria|poke <de> <para> <qtd>`\nEx: `!cambio pontos padaria 100`'
       },
       {
-        name: '🎲 Minigames',
+        name: '🏪 Loja & cosméticos',
         value:
-          '`!coinflip cara|coroa aposta` (ou `aposta cara`, `all`)\n`!guess 1-5 aposta` `!minigames`'
+          '`!loja` · `!cosmetico loja` `!cosmetico comprar id` `!cosmetico equipar id`'
+      },
+      {
+        name: '🎲 Minigames & apostas',
+        value:
+          '`!coinflip cara|coroa aposta` · `!guess` · `!apostar cara|coroa pts` (próximo flip)'
       }
     ]
   },
   {
     title: '📕 Guia · Padaria',
     description:
-      'Página **3/6** — idle de padaria (inspirado no *bake.gg*, conteúdo original).\nMoedas da padaria ≠ pontos do servidor.',
+      'Página **3/6** — idle + upgrades + pedidos NPC.\n**Só no canal da padaria** · moedas ≠ pontos/poke.',
     fields: [
+      {
+        name: '📍 Canal',
+        value: 'Comandos da padaria apenas em `<#1530334104334237939>`'
+      },
       {
         name: '🔁 Loop',
         value: '`!assar receita` → espera → `!servir` → 🪙 + XP da padaria'
@@ -59,11 +66,12 @@ const HELP_PAGES = [
       {
         name: '🥖 Comandos',
         value:
-          '`!padaria` `!assar` `!servir` `!receitas` `!forno` `!rankpadaria`\n`!ajuda padaria` ou `!padariahelp`'
+          '`!padaria` `!assar` `!servir` `!receitas` `!forno` `!upgrade` `!pedido` `!fornonotify` `!rankpadaria`'
       },
       {
-        name: '🚀 Começar',
-        value: '`!assar pao` ou `!assar croissant` — depois `!servir` quando ficar pronto.'
+        name: '⬆️ Upgrades & pedidos',
+        value:
+          '`!upgrade speed|profit|mastery|luck|charm`\n`!pedido novo` — combo de NPC com bônus de 🪙'
       }
     ]
   },
@@ -78,14 +86,23 @@ const HELP_PAGES = [
       },
       {
         name: '📌 Dica',
-        value: 'Permissões: **Conectar** e **Falar** no canal de voz.'
+        value: 'Permissões: **Conectar** e **Falar** no canal de voz. Conta pra quests de música.'
       }
     ]
   },
   {
-    title: '📕 Guia · Config & moderação',
-    description: 'Página **5/6** — para a staff do servidor.',
+    title: '📕 Guia · Eventos & staff',
+    description: 'Página **5/6** — eventos de servidor e moderação.',
     fields: [
+      {
+        name: '🎪 Eventos',
+        value:
+          '`!evento status`\nStaff: `!evento happyhour [min]` · `padaria` · `praid` · `boss [meta]` · `parar`'
+      },
+      {
+        name: '⭐ Starboard',
+        value: '`!starboard canal #destaques` · `!starboard min 3` · `!starboard off`'
+      },
       {
         name: '⚙️ Config (Gerenciar Servidor)',
         value:

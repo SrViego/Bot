@@ -13,7 +13,13 @@ const defaultGuildConfig = {
   ticketEnabled: true,
   ticketCategoryId: null,
   ticketStaffRoleId: null,
-  ticketCounter: 0
+  ticketCounter: 0,
+  // starboard
+  starboardChannelId: null,
+  starboardEmoji: '⭐',
+  starboardMin: 3,
+  // eventos (happy hour, etc.)
+  events: null
 };
 
 const defaultData = {

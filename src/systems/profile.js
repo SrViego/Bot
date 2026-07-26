@@ -3,6 +3,7 @@ const { getAchievementProgress } = require('./achievements');
 const { shopItems } = require('./shop');
 const { getNeededXp } = require('./xp');
 const { progressBar } = require('./theme');
+const { profileCosmeticLines, ensureCosmetics } = require('./cosmetics');
 
 function handleProfileCommand(message, data) {
   const command = message.content.trim().split(/\s+/)[0].toLowerCase();
@@ -17,14 +18,19 @@ function handleProfileCommand(message, data) {
   const stats = userData.stats ?? {};
   const minigames = userData.minigames ?? {};
   const bar = progressBar(userData.xp, neededXp, 12);
+  const cos = ensureCosmetics(userData);
+  const cosLine = profileCosmeticLines(userData);
 
-  const titleLine = userData.equippedTitle
-    ? `\n**${userData.equippedTitle}**`
+  const titleLine = userData.equippedTitle || cos.title
+    ? `\n**${userData.equippedTitle || cos.title}**`
     : '';
+
+  const bakeryCoins = userData.bakery?.coins;
+  const pokeCoins = userData.pokemon?.coins;
 
   message.reply({
     title: `📜 Perfil de ${target.username}`,
-    description: `${target}${titleLine}`,
+    description: `${target}${titleLine}${cosLine ? `\n${cosLine}` : ''}`,
     thumbnail: target.displayAvatarURL({ size: 256 }),
     fields: [
       {
@@ -40,6 +46,11 @@ function handleProfileCommand(message, data) {
       {
         name: '💎 Reputação',
         value: `**${userData.rep ?? 0}**`,
+        inline: true
+      },
+      {
+        name: '🪙 Outras moedas',
+        value: `Padaria **${bakeryCoins ?? 0}** · Poke **${pokeCoins ?? 0}**`,
         inline: true
       },
       {

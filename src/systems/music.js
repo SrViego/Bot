@@ -346,7 +346,7 @@ async function searchWithFallbacks(player, rawQuery, requester) {
   return { result: null, used: null, query, lastError };
 }
 
-async function handlePlay(message, rawQuery) {
+async function handlePlay(message, rawQuery, data) {
   const voiceChannel = memberVoiceChannel(message);
   if (!voiceChannel) {
     await message.reply("Entra em um canal de voz antes de pedir música.");
@@ -413,6 +413,21 @@ async function handlePlay(message, rawQuery) {
   // Single: só a primeira
   const tracksToAdd = isPlaylist ? tracks : tracks[0];
   await player.queue.add(tracksToAdd);
+
+  if (data && message.guild) {
+    try {
+      require("./quests").trackQuest(
+        data,
+        message.guild.id,
+        message.author.id,
+        "music_play",
+        isPlaylist ? Math.min(5, tracks.length) : 1,
+        true
+      );
+    } catch {
+      /* ignore */
+    }
+  }
 
   const wasPlaying = player.playing || player.paused;
   if (!wasPlaying) {
@@ -573,7 +588,7 @@ async function handleVolume(message, args) {
   return true;
 }
 
-async function handleMusicCommand(message) {
+async function handleMusicCommand(message, data) {
   const content = message.content.trim();
   const lower = content.toLowerCase();
 
@@ -587,7 +602,7 @@ async function handleMusicCommand(message) {
       await message.reply("Uso: `!play nome ou link da música`");
       return true;
     }
-    return handlePlay(message, query);
+    return handlePlay(message, query, data);
   }
 
   if (lower.startsWith("!pause")) return handlePause(message);
@@ -607,7 +622,7 @@ async function handleMusicCommand(message) {
       await message.reply("Uso: `!p nome ou link da música`");
       return true;
     }
-    return handlePlay(message, query);
+    return handlePlay(message, query, data);
   }
 
   return false;

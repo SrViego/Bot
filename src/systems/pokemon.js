@@ -2,7 +2,16 @@
  * Sistema Pokémon (pokedex completa, loja, captura, PvP)
  * Só funciona no canal POKEMON_CHANNEL_ID.
  */
-const { getUserData, saveData } = require('./database');
+const { getUserData, saveUser } = require('./database');
+
+function persistAuthor(data, message) {
+  saveUser(data, message.guild.id, message.author.id);
+}
+function persistUsers(data, guildId, ...ids) {
+  for (const id of ids) {
+    if (id) saveUser(data, guildId, id);
+  }
+}
 const {
   getAllPokemon,
   getPokemon,
@@ -20,8 +29,11 @@ const {
 const { POKE_SHOP, findPokeItem } = require('./pokemon-shop');
 const { theme } = require('./theme');
 
-const POKEMON_CHANNEL_ID =
-  process.env.POKEMON_CHANNEL_ID || '1529584865249464390';
+/** Canal exclusivo Pokémon — defina POKEMON_CHANNEL_ID no .env (sem fallback hardcoded). */
+const POKEMON_CHANNEL_ID = process.env.POKEMON_CHANNEL_ID || null;
+if (!POKEMON_CHANNEL_ID) {
+  console.warn('[pokemon] POKEMON_CHANNEL_ID não definido no .env — comandos Pokémon ficam desativados.');
+}
 
 const STARTERS = [1, 4, 7, 25, 133, 152, 155, 158, 252, 255, 258, 387, 390, 393];
 const MAX_TEAM_BASE = 3;
@@ -58,7 +70,7 @@ const MOVE_POOL = {
 
 function handlePokemonCommand(message, data) {
   if (!message.guild || message.author.bot) return false;
-  if (message.channel.id !== POKEMON_CHANNEL_ID) return false;
+  if (!POKEMON_CHANNEL_ID || message.channel.id !== POKEMON_CHANNEL_ID) return false;
 
   const args = message.content.trim().split(/\s+/);
   const cmd = args[0].toLowerCase();
@@ -374,7 +386,7 @@ function startAdventure(message, args, data) {
   poke.coins = Math.max(poke.coins, 200);
   poke.bag.pokeball = (poke.bag.pokeball || 0) + 5;
   poke.bag.potion = (poke.bag.potion || 0) + 2;
-  saveData(data);
+  persistAuthor(data, message);
 
   message.reply({
     title: `✨ ${species.name} se juntou a você!`,
@@ -413,7 +425,7 @@ function wildEncounter(message, data) {
   const wild = createOwned(species, level);
   poke.wild = wild;
   poke.lastWildAt = now;
-  saveData(data);
+  persistAuthor(data, message);
 
   message.reply({
     title: '🌿 Pokémon selvagem!',
@@ -489,7 +501,7 @@ function catchWild(message, args, data) {
     // 40% chance wild flees
     const fled = Math.random() < 0.4;
     if (fled) poke.wild = null;
-    saveData(data);
+    persistAuthor(data, message);
     message.reply({
       title: '💨 Escapou!',
       description: fled
@@ -537,7 +549,7 @@ function catchWild(message, args, data) {
   } catch {
     /* ignore */
   }
-  saveData(data);
+  persistAuthor(data, message);
 
   message.reply({
     title: '🎉 Capturado!',
@@ -718,7 +730,7 @@ function setMainPokemon(message, args, data) {
 
   const [mon] = poke.team.splice(idx, 1);
   poke.team.unshift(mon);
-  saveData(data);
+  persistAuthor(data, message);
 
   message.reply({
     title: '⭐ Novo Pokémon principal!',
@@ -854,7 +866,7 @@ function evolveMain(message, data) {
   mon.hp = Math.max(1, Math.min(mon.maxHp, Math.floor(mon.maxHp * ratio)));
   mon.moves = generateMoves(mon.types, mon.level);
 
-  saveData(data);
+  persistAuthor(data, message);
 
   message.reply({
     title: '✨ Evolução!',
@@ -925,7 +937,7 @@ function boxToTeam(message, args, data) {
   }
   const [mon] = poke.box.splice(idx, 1);
   poke.team.push(mon);
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: '✅ Adicionado ao time',
     description: `**${mon.name}** entrou no time.`,
@@ -961,7 +973,7 @@ function teamToBox(message, args, data) {
   }
   const [mon] = poke.team.splice(idx, 1);
   poke.box.push(mon);
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: '📦 Movido para a caixa',
     description: `**${mon.name}** foi para a caixa.`,
@@ -995,7 +1007,7 @@ function swapTeam(message, args, data) {
     return;
   }
   [poke.team[a], poke.team[b]] = [poke.team[b], poke.team[a]];
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: '🔄 Time reordenado',
     description: [
@@ -1069,7 +1081,7 @@ function buyPokeItem(message, args, data) {
     }
     poke.coins -= item.price;
     poke.teamLimit = Math.min(MAX_TEAM_CAP, poke.teamLimit + 1);
-    saveData(data);
+    persistAuthor(data, message);
     message.reply({
       title: '🎒 Time expandido',
       description: `Novo limite: **${poke.teamLimit}** Pokémon no time.`,
@@ -1080,7 +1092,7 @@ function buyPokeItem(message, args, data) {
 
   poke.coins -= total;
   poke.bag[item.id] = (poke.bag[item.id] || 0) + qty;
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: '🛍️ Compra Pokémon',
     description: `Comprou ${item.emoji} **${item.name}** ×${qty}`,
@@ -1169,7 +1181,7 @@ function usePokeItem(message, args, data) {
     desc = `Usou ${item.name}.`;
   }
 
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: `${item.emoji} Item usado`,
     description: desc,
@@ -1197,7 +1209,7 @@ function pokeDaily(message, data) {
   const coins = 150 + randInt(0, 100);
   poke.coins += coins;
   poke.bag.pokeball = (poke.bag.pokeball || 0) + 3;
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: '🎁 Daily Pokémon',
     description: `${message.author} recebeu **${coins}** 🪙 e **3** Poké Balls!`,
@@ -1506,7 +1518,7 @@ function endBattle(message, data, battle, winnerId, loserId, preamble = []) {
   } catch {
     /* ignore */
   }
-  saveData(data);
+  persistUsers(data, message.guild.id, winnerId, loserId);
 
   message.channel.send({
     title: '🏆 Fim de batalha!',

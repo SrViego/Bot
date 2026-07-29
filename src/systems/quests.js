@@ -3,7 +3,7 @@
  * Progresso em userData.quests
  */
 
-const { getUserData, saveData } = require('./database');
+const { getUserData, saveUser } = require('./database');
 const { theme } = require('./theme');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -124,8 +124,7 @@ function trackQuest(data, guildId, userId, track, amount = 1, save = true) {
     }
   }
 
-  if (save && done.length) saveData(data);
-  else if (save) saveData(data);
+  if (save) saveUser(data, guildId, userId);
   return done;
 }
 
@@ -173,7 +172,7 @@ function handleQuestCommand(message, data) {
         claimed.push(`${quest.emoji} **${quest.name}** → ${parts.join(', ')}`);
       }
     }
-    saveData(data);
+    saveUser(data, message.guild.id, message.author.id);
     if (!claimed.length) {
       message.reply({
         title: '📋 Nada pra resgatar',

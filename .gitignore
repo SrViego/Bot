@@ -12,6 +12,14 @@ data/*
 !data/.gitkeep
 !data/pokemon-data.json
 !data/pokemon-evolutions.json
+# backups e métricas (semana 1) — nunca versionar
+data/backups/
+data/metrics/
+data/morgana.db
+data/morgana.db-*
+data/*.from-sqlite.json
+*.tmp
+
 
 # binários portáteis / pesados (ficam no PC, fora do Git)
 nodejs/

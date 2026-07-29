@@ -1,47 +1,57 @@
 require('dotenv').config();
 
 const { Client, Events, GatewayIntentBits, Partials } = require('discord.js');
-const { getGuildData, loadData } = require('./systems/database');
+const {
+  getGuildData,
+  loadData,
+  backupDataDailyIfNeeded,
+  flushSave
+} = require('./systems/database');
+const {
+  trackCommand,
+  trackError,
+  pruneOldMetrics,
+  prefixCommandName
+} = require('./systems/metrics');
 const { handleMarriageCommand } = require('./systems/marriage');
-const { handlePointsCommand } = require('./systems/points');
-const { handleShopCommand } = require('./systems/shop');
-const { addXpFromMessage, handleXpCommand } = require('./systems/xp');
+const { addXpFromMessage } = require('./systems/xp');
 const { handleModerationCommand } = require('./systems/moderation');
-const { handleAchievementsCommand } = require('./systems/achievements');
-const { handleProfileCommand } = require('./systems/profile');
-const { handleReputationCommand } = require('./systems/reputation');
-const { handleMinigameCommand } = require('./systems/minigames');
-const { handleUtilityCommand } = require('./systems/utility');
-const { handleHelpCommand } = require('./systems/help');
 const { handleConfigCommand } = require('./systems/config');
 const { applyAutoRole } = require('./systems/autoroles');
 const { handleModLogCommand } = require('./systems/modlogs');
-const { applyTheme, createEmbed } = require('./systems/theme');
+const { applyTheme } = require('./systems/theme');
 const { sendWelcome, sendGoodbye } = require('./systems/welcome');
-const { handleLavalinkRawData, handleMusicCommand, initLavalink } = require('./systems/music');
-const { handlePokemonCommand } = require('./systems/pokemon');
+const { handleLavalinkRawData, initLavalink } = require('./systems/music');
 const { handleCleanupCommand } = require('./systems/cleanup');
 const { handleBakeryCommand, processOvenNotifications } = require('./systems/bakery');
 const { handleTicketCommand, handleTicketButton } = require('./systems/tickets');
-const { handleQuestCommand } = require('./systems/quests');
 const { handleEventCommand } = require('./systems/guild-events');
-const { handleExchangeCommand } = require('./systems/economy-bridge');
-const { handleCosmeticsCommand } = require('./systems/cosmetics');
-const { handleLoreCommand } = require('./systems/lore');
 const { handleStarboardCommand, handleStarboardReaction } = require('./systems/starboard');
-const { handleBetCommand } = require('./systems/bets');
-const { handleServerStatsCommand } = require('./systems/server-stats');
-const { registerSlashCommands, handleSlashInteraction } = require('./systems/slash');
+
+// Registry: ping, lore, ajuda, music + handlers legados (economia, poke, util…)
+const {
+  registerSlashCommands,
+  dispatchPrefix,
+  dispatchSlash
+} = require('./commands/load');
+const { handleLegacySlash } = require('./commands/slash-legacy');
 
 const token = process.env.DISCORD_TOKEN;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
 const goodbyeChannelId = process.env.GOODBYE_CHANNEL_ID;
-const data = loadData();
 
-if (!token) {
+// Segurança: nunca logar o token
+if (!token || token === 'cole_o_token_do_bot_aqui') {
   console.error('Erro: coloque o token do bot no arquivo .env como DISCORD_TOKEN=seu_token');
   process.exit(1);
 }
+if (token.length < 50) {
+  console.warn('[security] DISCORD_TOKEN parece curto demais — confira o .env');
+}
+
+const data = loadData();
+pruneOldMetrics();
+backupDataDailyIfNeeded();
 
 const client = new Client({
   intents: [
@@ -57,14 +67,23 @@ const client = new Client({
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot online como ${readyClient.user.tag}`);
+  trackCommand('system:ready', { ok: true, detail: readyClient.user.tag });
   await initLavalink(readyClient);
   await registerSlashCommands(readyClient);
-  // forno pronto (DM) a cada 45s
   setInterval(() => {
-    processOvenNotifications(readyClient, data).catch((err) =>
-      console.error('oven notify:', err.message)
-    );
+    processOvenNotifications(readyClient, data).catch((err) => {
+      console.error('oven notify:', err.message);
+      trackError('oven.notify', err);
+    });
   }, 45_000);
+  setInterval(() => {
+    try {
+      backupDataDailyIfNeeded();
+      pruneOldMetrics();
+    } catch (err) {
+      console.error('maintenance:', err.message);
+    }
+  }, 6 * 60 * 60 * 1000);
 });
 
 client.on('raw', (packet) => {
@@ -74,9 +93,16 @@ client.on('raw', (packet) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (await handleTicketButton(interaction, data)) return;
-    if (await handleSlashInteraction(interaction, data)) return;
+    // registry first (ping, lore, ajuda)
+    if (await dispatchSlash(interaction, data)) return;
+    // legacy slash (padaria, quest, perfil, evento)
+    if (await handleLegacySlash(interaction, data)) return;
   } catch (err) {
     console.error('interaction:', err);
+    trackError('interaction', err, {
+      guildId: interaction.guildId,
+      userId: interaction.user?.id
+    });
   }
 });
 
@@ -85,6 +111,10 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     await handleStarboardReaction(reaction, user, data);
   } catch (err) {
     console.error('reaction:', err);
+    trackError('starboard.reaction', err, {
+      guildId: reaction.message?.guildId,
+      userId: user?.id
+    });
   }
 });
 
@@ -101,6 +131,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
     await sendWelcome(channel, member);
   } catch (err) {
     console.error('Erro ao enviar boas-vindas:', err);
+    trackError('welcome', err, { guildId: member.guild.id, userId: member.id });
   }
 });
 
@@ -115,6 +146,7 @@ client.on(Events.GuildMemberRemove, async (member) => {
     await sendGoodbye(channel, member);
   } catch (err) {
     console.error('Erro ao enviar despedida:', err);
+    trackError('goodbye', err, { guildId: member.guild.id, userId: member.id });
   }
 });
 
@@ -124,55 +156,52 @@ client.on(Events.MessageCreate, async (message) => {
   applyTheme(message);
   addXpFromMessage(message, data);
 
-  if (message.content === '!ping') {
-    const sent = await message.reply({
-      title: '🏓 Pong!',
-      description: 'Medindo latência…'
+  const t0 = Date.now();
+  const cmdName = prefixCommandName(message.content);
+
+  const trackHandled = (handled) => {
+    if (!handled) return false;
+    if (cmdName) {
+      trackCommand(cmdName, {
+        guildId: message.guild.id,
+        userId: message.author.id,
+        ms: Date.now() - t0,
+        ok: true
+      });
+    }
+    return true;
+  };
+
+  try {
+    // Padaria ANTES do registry: captura `!ajuda padaria`
+    if (handleBakeryCommand(message, data)) {
+      trackHandled(true);
+      return;
+    }
+
+    // Registry (economia, poke, util, music, ajuda, …)
+    if (await dispatchPrefix(message, data)) return;
+
+    // Ainda fora do registry (config/admin/eventos)
+    if (trackHandled(handleEventCommand(message, data))) return;
+    if (trackHandled(handleStarboardCommand(message, data))) return;
+    if (trackHandled(handleTicketCommand(message, data))) return;
+    if (trackHandled(handleConfigCommand(message, data))) return;
+    if (trackHandled(handleCleanupCommand(message, data))) return;
+    if (trackHandled(handleModLogCommand(message, data))) return;
+
+    if (await handleModerationCommand(message, data)) {
+      trackHandled(true);
+      return;
+    }
+    if (trackHandled(handleMarriageCommand(message, data))) return;
+  } catch (err) {
+    console.error('message:', err);
+    trackError(cmdName || 'message', err, {
+      guildId: message.guild?.id,
+      userId: message.author?.id
     });
-    const roundtrip = sent.createdTimestamp - message.createdTimestamp;
-    const ws = client.ws.ping;
-    await sent.edit({
-      embeds: [
-        createEmbed(
-          [`📡 **Round-trip:** \`${roundtrip}ms\``, `💓 **WebSocket:** \`${ws}ms\``].join('\n'),
-          { title: '🏓 Pong!' }
-        )
-      ]
-    });
-    return;
   }
-
-  // Pokémon: só no canal configurado (checa dentro do handler)
-  if (handlePokemonCommand(message, data)) return;
-
-  // Padaria antes do !ajuda geral (pra `!ajuda padaria` funcionar)
-  if (handleBakeryCommand(message, data)) return;
-
-  if (handleQuestCommand(message, data)) return;
-  if (handleEventCommand(message, data)) return;
-  if (handleExchangeCommand(message, data)) return;
-  if (handleCosmeticsCommand(message, data)) return;
-  if (handleLoreCommand(message)) return;
-  if (handleStarboardCommand(message, data)) return;
-  if (handleBetCommand(message, data)) return;
-  if (handleServerStatsCommand(message, data)) return;
-
-  if (handleHelpCommand(message)) return;
-  if (handleTicketCommand(message, data)) return;
-  if (handleConfigCommand(message, data)) return;
-  if (handleCleanupCommand(message, data)) return;
-  if (handleUtilityCommand(message)) return;
-  if (handleProfileCommand(message, data)) return;
-  if (handleAchievementsCommand(message, data)) return;
-  if (handleReputationCommand(message, data)) return;
-  if (handleMinigameCommand(message, data)) return;
-  if (handleModLogCommand(message, data)) return;
-  if (await handleModerationCommand(message, data)) return;
-  if (handleMarriageCommand(message, data)) return;
-  if (handlePointsCommand(message, data)) return;
-  if (handleShopCommand(message, data)) return;
-  if (handleXpCommand(message, data)) return;
-  if (await handleMusicCommand(message, data)) return;
 });
 
 async function getTextChannel(guild, channelId) {
@@ -184,9 +213,22 @@ async function getTextChannel(guild, channelId) {
   return guild.systemChannel?.isTextBased() ? guild.systemChannel : null;
 }
 
+// semana 4: flush debounce SQLite no shutdown
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    try {
+      flushSave?.();
+    } catch {
+      /* ignore */
+    }
+    process.exit(0);
+  });
+}
+
 (async () => {
   await client.login(token);
 })().catch((err) => {
-  console.error('Falha ao iniciar o bot:', err);
+  console.error('Falha ao iniciar o bot:', err.message || err);
+  trackError('login', err);
   process.exit(1);
 });

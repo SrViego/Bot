@@ -2,7 +2,7 @@
  * Cosméticos de perfil (molduras, títulos, badges) — sink de pontos.
  */
 
-const { getUserData, saveData } = require('./database');
+const { getUserData, saveUser } = require('./database');
 const { theme } = require('./theme');
 
 /** @type {{ id: string, name: string, emoji: string, type: 'title'|'frame'|'badge', price: number, currency: 'points'|'bakery', unlockLevel?: number }[]} */
@@ -128,7 +128,7 @@ function handleCosmeticsCommand(message, data) {
       userData.points -= item.price;
     }
     cos.owned.push(item.id);
-    saveData(data);
+    saveUser(data, message.guild.id, message.author.id);
     message.reply({
       title: '✨ Comprado!',
       description: `${item.emoji} **${item.name}**\nEquipe: \`!cosmetico equipar ${item.id}\``,
@@ -156,7 +156,7 @@ function handleCosmeticsCommand(message, data) {
     } else if (item.type === 'badge') {
       if (!cos.badges.includes(item.emoji)) cos.badges.push(item.emoji);
     }
-    saveData(data);
+    saveUser(data, message.guild.id, message.author.id);
     message.reply({
       title: '✨ Equipado',
       description: `${item.emoji} **${item.name}** agora aparece no seu perfil.`,

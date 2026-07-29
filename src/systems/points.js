@@ -1,4 +1,4 @@
-const { getUserData, saveData } = require("./database");
+const { getUserData, mutateUser } = require("./database");
 const { grantAchievements, notifyAchievements } = require("./achievements");
 
 function handlePointsCommand(message, data) {
@@ -39,14 +39,55 @@ function showPoints(message, data) {
 }
 
 function claimDaily(message, data) {
-  const userData = getUserData(data, message.guild.id, message.author.id);
+  const guildId = message.guild.id;
+  const userId = message.author.id;
   const now = Date.now();
   const oneDay = 24 * 60 * 60 * 1000;
   const twoDays = 2 * oneDay;
 
-  if (userData.lastDailyAt && now - userData.lastDailyAt < oneDay) {
-    const remaining = oneDay - (now - userData.lastDailyAt);
-    const hours = Math.ceil(remaining / (60 * 60 * 1000));
+  let reward = 0;
+  let streakBonus = 0;
+  let boostNote = null;
+  let unlocked = [];
+  let dailyStreak = 0;
+  let points = 0;
+  let blocked = false;
+  let hours = 0;
+
+  mutateUser(data, guildId, userId, (userData) => {
+    if (userData.lastDailyAt && now - userData.lastDailyAt < oneDay) {
+      const remaining = oneDay - (now - userData.lastDailyAt);
+      hours = Math.ceil(remaining / (60 * 60 * 1000));
+      blocked = true;
+      return;
+    }
+
+    const keptStreak = userData.lastDailyAt && now - userData.lastDailyAt <= twoDays;
+    userData.stats.dailyStreak = keptStreak ? userData.stats.dailyStreak + 1 : 1;
+    userData.stats.bestDailyStreak = Math.max(userData.stats.bestDailyStreak, userData.stats.dailyStreak);
+    userData.stats.dailies += 1;
+
+    streakBonus = Math.min((userData.stats.dailyStreak - 1) * 20, 200);
+    reward = 100 + streakBonus;
+    if (userData.effects?.dailyBoostMult) {
+      const mult = Number(userData.effects.dailyBoostMult) || 1.5;
+      const before = reward;
+      reward = Math.floor(reward * mult);
+      boostNote = `Boost da loja ×${mult}: ${before} → **${reward}**`;
+      delete userData.effects.dailyBoostMult;
+    }
+    userData.points += reward;
+    userData.lastDailyAt = now;
+    dailyStreak = userData.stats.dailyStreak;
+    points = userData.points;
+
+    unlocked = grantAchievements(userData, ["first_daily"]);
+    if (userData.stats.dailyStreak >= 3) unlocked.push(...grantAchievements(userData, ["daily_3"]));
+    if (userData.stats.dailyStreak >= 7) unlocked.push(...grantAchievements(userData, ["daily_7"]));
+    if (userData.points >= 1000) unlocked.push(...grantAchievements(userData, ["wealthy"]));
+  });
+
+  if (blocked) {
     message.reply({
       title: '⏰ Daily já resgatado',
       description: `Você já pegou seus pontos hoje.\nVolte em cerca de **${hours}h**.`,
@@ -55,31 +96,7 @@ function claimDaily(message, data) {
     return;
   }
 
-  const keptStreak = userData.lastDailyAt && now - userData.lastDailyAt <= twoDays;
-  userData.stats.dailyStreak = keptStreak ? userData.stats.dailyStreak + 1 : 1;
-  userData.stats.bestDailyStreak = Math.max(userData.stats.bestDailyStreak, userData.stats.dailyStreak);
-  userData.stats.dailies += 1;
-
-  const streakBonus = Math.min((userData.stats.dailyStreak - 1) * 20, 200);
-  let reward = 100 + streakBonus;
-  let boostNote = null;
-  // Buff da loja (relógio do tempo)
-  if (userData.effects?.dailyBoostMult) {
-    const mult = Number(userData.effects.dailyBoostMult) || 1.5;
-    const before = reward;
-    reward = Math.floor(reward * mult);
-    boostNote = `Boost da loja ×${mult}: ${before} → **${reward}**`;
-    delete userData.effects.dailyBoostMult;
-  }
-  userData.points += reward;
-  userData.lastDailyAt = now;
-
-  const unlocked = grantAchievements(userData, ["first_daily"]);
-  if (userData.stats.dailyStreak >= 3) unlocked.push(...grantAchievements(userData, ["daily_3"]));
-  if (userData.stats.dailyStreak >= 7) unlocked.push(...grantAchievements(userData, ["daily_7"]));
-  if (userData.points >= 1000) unlocked.push(...grantAchievements(userData, ["wealthy"]));
-
-  saveData(data);
+  const userData = getUserData(data, guildId, userId);
   const fields = [
     { name: '💰 Recompensa', value: `**+${reward}** pontos`, inline: true },
     { name: '🔥 Sequência', value: `**${userData.stats.dailyStreak}** dia(s)`, inline: true },

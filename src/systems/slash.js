@@ -62,12 +62,13 @@ async function handleSlashInteraction(interaction, data, handlers) {
   }
 
   if (commandName === 'padaria') {
-    const ch = process.env.BAKERY_CHANNEL_ID || '1530334104334237939';
+    const ch = process.env.BAKERY_CHANNEL_ID;
+    const where = ch ? `Só no canal <#${ch}>` : 'Configure `BAKERY_CHANNEL_ID` no `.env`';
     await interaction.reply({
       embeds: [
         createEmbed(
           [
-            `Só no canal <#${ch}>`,
+            where,
             '`!padaria` · `!assar` · `!servir` · `!upgrade` · `!pedido` · `!forno`',
             'Moedas da padaria ≠ pontos do servidor.'
           ].join('\n'),

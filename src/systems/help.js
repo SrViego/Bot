@@ -57,7 +57,9 @@ const HELP_PAGES = [
     fields: [
       {
         name: '📍 Canal',
-        value: 'Comandos da padaria apenas em `<#1530334104334237939>`'
+        value: process.env.BAKERY_CHANNEL_ID
+          ? `Comandos da padaria apenas em <#${process.env.BAKERY_CHANNEL_ID}>`
+          : 'Configure `BAKERY_CHANNEL_ID` no `.env`'
       },
       {
         name: '🔁 Loop',

@@ -1,6 +1,6 @@
 const {
   getUserData,
-  saveData,
+  saveUser,
   hasActiveEffect,
   getEffectRemainingMs
 } = require('./database');
@@ -385,7 +385,7 @@ function buyItem(message, args, data) {
   userData.stats.purchases += qty;
 
   const unlocked = updateShopAchievements(userData);
-  saveData(data);
+  saveUser(data, message.guild.id, message.author.id);
 
   message.reply({
     title: '🛍️ Compra realizada!',
@@ -438,7 +438,7 @@ function sellItem(message, args, data) {
   userData.inventory[item.id] -= qty;
   if (userData.inventory[item.id] <= 0) delete userData.inventory[item.id];
   userData.points += gain;
-  saveData(data);
+  saveUser(data, message.guild.id, message.author.id);
 
   message.reply({
     title: '💸 Venda concluída',
@@ -494,7 +494,8 @@ function giftItem(message, args, data) {
   if (senderData.inventory[item.id] <= 0) delete senderData.inventory[item.id];
   targetData.inventory[item.id] = (targetData.inventory[item.id] ?? 0) + 1;
   senderData.stats.giftsSent = (senderData.stats.giftsSent ?? 0) + 1;
-  saveData(data);
+  saveUser(data, message.guild.id, message.author.id);
+  saveUser(data, message.guild.id, target.id);
 
   message.channel.send({
     title: '🎁 Presente entregue!',
@@ -597,7 +598,7 @@ function useItem(message, args, data) {
   }
 
   userData.stats.itemsUsed = (userData.stats.itemsUsed ?? 0) + 1;
-  saveData(data);
+  saveUser(data, message.guild.id, message.author.id);
 
   message.reply({
     title: result.title ?? `✨ Usou ${item.name}`,

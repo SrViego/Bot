@@ -14,7 +14,11 @@
  */
 
 const { AttachmentBuilder } = require('discord.js');
-const { getUserData, getGuildData, saveData } = require('./database');
+const { getUserData, getGuildData, saveData, saveUser } = require('./database');
+
+function persistAuthor(data, message) {
+  saveUser(data, message.guild.id, message.author.id);
+}
 const { theme, progressBar } = require('./theme');
 const { renderBakeryPng } = require('./bakery-render');
 const { trackQuest } = require('./quests');
@@ -23,9 +27,11 @@ const {
   contributeBakeryBoss
 } = require('./guild-events');
 
-/** Canal exclusivo da padaria (como o canal Pokémon). */
-const BAKERY_CHANNEL_ID =
-  process.env.BAKERY_CHANNEL_ID || '1530334104334237939';
+/** Canal exclusivo da padaria — defina BAKERY_CHANNEL_ID no .env (sem fallback hardcoded). */
+const BAKERY_CHANNEL_ID = process.env.BAKERY_CHANNEL_ID || null;
+if (!BAKERY_CHANNEL_ID) {
+  console.warn('[bakery] BAKERY_CHANNEL_ID não definido no .env — comandos da padaria ficam desativados.');
+}
 
 /** @typedef {{ id: string, name: string, emoji: string, cookMs: number, coins: number, xp: number, unlockLevel: number }} Recipe */
 
@@ -159,14 +165,18 @@ const ORDER_POOL = [
 ];
 
 function inBakeryChannel(message) {
+  if (!BAKERY_CHANNEL_ID) return false;
   return message.channel?.id === BAKERY_CHANNEL_ID;
 }
 
 function denyWrongChannel(message) {
+  const desc = BAKERY_CHANNEL_ID
+    ? `Os comandos da padaria só funcionam em <#${BAKERY_CHANNEL_ID}>.`
+    : 'Padaria desativada: defina `BAKERY_CHANNEL_ID` no arquivo `.env`.';
   message
     .reply({
       title: '🥖 Canal da padaria',
-      description: `Os comandos da padaria só funcionam em <#${BAKERY_CHANNEL_ID}>.`,
+      description: desc,
       color: theme.colorWarn
     })
     .catch(() => null);
@@ -546,7 +556,7 @@ function startBake(message, args, data) {
   const readyAt = now + cookMs;
   b.cooking.push({ recipeId: recipe.id, readyAt });
   trackQuest(data, message.guild.id, message.author.id, 'bakery_bake', 1, false);
-  saveData(data);
+  persistAuthor(data, message);
 
   const speedLv = upgradeLevel(b, 'speed');
   const speedNote =
@@ -678,7 +688,7 @@ function serveReady(message, data) {
     // desbloqueia forno slot cap por nível (não dá forno grátis, só aumenta o teto)
   }
 
-  saveData(data);
+  persistAuthor(data, message);
 
   const fields = [
     { name: '🪙 Moedas', value: `**+${coinsGain}** → saldo **${b.coins}**`, inline: true },
@@ -820,7 +830,7 @@ function buyUpgrade(message, data, b, upgrade) {
   b.coins -= cost;
   b.upgrades[upgrade.id] = lv + 1;
   trackQuest(data, message.guild.id, message.author.id, 'bakery_upgrade', 1, false);
-  saveData(data);
+  persistAuthor(data, message);
 
   const newLv = b.upgrades[upgrade.id];
   message.reply({
@@ -867,7 +877,7 @@ function handleOrderCommand(message, args, data) {
       bonus: template.bonus + Math.floor(b.level * 1.5),
       expiresAt: Date.now() + 40 * 60_000
     };
-    saveData(data);
+    persistAuthor(data, message);
     message.reply({
       title: '📋 Novo pedido!',
       description: [
@@ -891,7 +901,7 @@ function handleOrderCommand(message, args, data) {
       return;
     }
     b.order = null;
-    saveData(data);
+    persistAuthor(data, message);
     message.reply({
       title: '📋 Pedido cancelado',
       description: 'Pode pegar outro com `!pedido novo`.',
@@ -944,7 +954,7 @@ function toggleOvenNotify(message, data) {
   const userData = getUserData(data, message.guild.id, message.author.id);
   const b = ensureBakery(userData);
   b.notifyReady = !b.notifyReady;
-  saveData(data);
+  persistAuthor(data, message);
   message.reply({
     title: b.notifyReady ? '🔔 Avisos ligados' : '🔕 Avisos desligados',
     description: b.notifyReady
@@ -998,7 +1008,7 @@ async function processOvenNotifications(client, data) {
       }
     }
   }
-  saveData(data);
+  saveData(data); // batch multi-user (forno notify)
 }
 
 function upgradeOven(message, data) {
@@ -1037,7 +1047,7 @@ function upgradeOven(message, data) {
   b.coins -= cost;
   b.ovens += 1;
   trackQuest(data, message.guild.id, message.author.id, 'bakery_upgrade', 1, false);
-  saveData(data);
+  persistAuthor(data, message);
 
   message.reply({
     title: '🔥 Novo forno!',

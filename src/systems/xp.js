@@ -1,4 +1,4 @@
-const { getUserData, saveData, hasActiveEffect } = require("./database");
+const { getUserData, saveUser, saveDataSoon, hasActiveEffect } = require("./database");
 const { grantAchievements, notifyAchievements } = require("./achievements");
 const { progressBar } = require("./theme");
 const { getXpMultiplier } = require("./guild-events");
@@ -9,7 +9,9 @@ const xpCooldown = 60 * 1000;
 function addXpFromMessage(message, data) {
   if (!message.guild || message.author.bot || message.content.startsWith('!')) return;
 
-  const userData = getUserData(data, message.guild.id, message.author.id);
+  const guildId = message.guild.id;
+  const userId = message.author.id;
+  const userData = getUserData(data, guildId, userId);
   const now = Date.now();
 
   if (now - userData.lastXpAt < xpCooldown) return;
@@ -48,7 +50,9 @@ function addXpFromMessage(message, data) {
   }
 
   notifyAchievements(message, unlocked);
-  saveData(data);
+  // semana 4: grava só o user + debounce do estado (quests no mesmo data)
+  saveUser(data, guildId, userId);
+  saveDataSoon(data);
 }
 
 function handleXpCommand(message, data) {

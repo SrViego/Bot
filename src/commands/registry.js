@@ -143,6 +143,10 @@ async function runCommand(cmd, ctx) {
   const t0 = Date.now();
   const label = ctx.isSlash ? `/${cmd.name}` : `${PREFIX}${cmd.name}`;
   try {
+    if (typeof cmd.execute !== 'function') {
+      // só tem legacyMessageHandler (prefix) — slash deve cair no handler legado
+      return false;
+    }
     if (cmd.permission && ctx.member) {
       const bit = cmd.permission;
       if (!ctx.member.permissions?.has(bit)) {
@@ -225,6 +229,11 @@ async function dispatchSlash(interaction, data) {
   const cmd = get(interaction.commandName);
   if (!cmd) return false;
 
+  // Comandos prefix-only (só legacyMessageHandler) não atendem slash —
+  // deixa cair no handleLegacySlash (ex: /perfil, /quest).
+  if (typeof cmd.execute !== 'function') return false;
+  if (cmd.prefixOnly && cmd.slash === false && !cmd.slashBuilder) return false;
+
   const args = [];
   // optional string option "query" / subcommands as args[0]
   if (interaction.options) {
@@ -234,6 +243,9 @@ async function dispatchSlash(interaction, data) {
     if (q) args.push(...q.split(/\s+/));
     const page = interaction.options.getInteger('pagina');
     if (page != null) args.push(String(page));
+    // lore: tipo
+    const tipo = interaction.options.getString('tipo');
+    if (tipo && !args.length) args.push(tipo);
   }
 
   const ctx = createContext({ interaction, data, args });

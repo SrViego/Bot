@@ -5,8 +5,12 @@ java
 .env
 # runtime only — manter pokédex estática no build
 data/database.json
+data/morgana.db
+data/backups
+data/metrics
 lavalink
-scripts
+# helpers de host (start.sh etc.) — só os .js de migrate/export vão no build
+scripts/*.sh
 *.md
 NIXOS.md
 Dockerfile

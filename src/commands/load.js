@@ -1,7 +1,10 @@
 /**
- * Carrega registry + registra todos os slash (registry + catálogo).
+ * Carrega registry + registra slash (catálogo agrupado + ping/lore/ajuda).
  *
- * Registro em cada guild = aparece na hora (global pode demorar até ~1h).
+ * SLASH_REGISTER no .env:
+ *   guild  — só no servidor (na hora; não aparece em DM)
+ *   global — só global (pode demorar até ~1h; funciona em todo lugar)
+ *   both   — guild + global (default; se duplicar, use guild)
  */
 
 const { REST, Routes } = require('discord.js');
@@ -29,20 +32,27 @@ function buildMergedSlashBody() {
   return { merged, fromRegistry, fromCatalog };
 }
 
+async function putGuildCommands(rest, appId, guildId, body, label) {
+  // limpa e reescreve — ajuda o client Discord a largar lista antiga
+  await rest.put(Routes.applicationGuildCommands(appId, guildId), { body: [] });
+  await rest.put(Routes.applicationGuildCommands(appId, guildId), { body });
+  console.log(`[slash] guild ${label}: ${body.length} comandos (refresh)`);
+}
+
 async function registerSlashCommands(client) {
   const token = process.env.DISCORD_TOKEN;
   if (!token || !client.application?.id) return;
 
   const { merged, fromRegistry } = buildMergedSlashBody();
+  const mode = (process.env.SLASH_REGISTER || 'both').toLowerCase();
 
   if (merged.length > 100) {
-    console.error(`[slash] ${merged.length} comandos > limite Discord 100 — corte o catálogo`);
+    console.error(`[slash] ${merged.length} > 100 — Discord vai recusar`);
   }
 
   const rest = new REST({ version: '10' }).setToken(token);
   const appId = client.application.id;
 
-  // Guilds explícitas no .env (vírgula) ou todas em que o bot está
   const envGuilds = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || '')
     .split(',')
     .map((s) => s.trim())
@@ -52,17 +62,19 @@ async function registerSlashCommands(client) {
     : [...client.guilds.cache.keys()];
 
   try {
-    // Só um lugar por vez — guild+global = comandos duplicados no Discord.
-    // Preferência: guild (aparece na hora). Global só se não houver guild.
-    if (guildIds.length > 0) {
+    const doGuild = mode === 'guild' || mode === 'both';
+    const doGlobal = mode === 'global' || mode === 'both' || guildIds.length === 0;
+
+    if (doGuild && guildIds.length) {
       for (const guildId of guildIds) {
         try {
-          await rest.put(Routes.applicationGuildCommands(appId, guildId), {
-            body: merged
-          });
           const g = client.guilds.cache.get(guildId);
-          console.log(
-            `[slash] guild ${g?.name || guildId}: ${merged.length} comandos`
+          await putGuildCommands(
+            rest,
+            appId,
+            guildId,
+            merged,
+            g?.name || guildId
           );
         } catch (err) {
           console.error(`[slash] guild ${guildId} failed:`, err.message);
@@ -71,17 +83,26 @@ async function registerSlashCommands(client) {
           }
         }
       }
-      // limpa global antigo pra não duplicar no seletor /
-      await rest.put(Routes.applicationCommands(appId), { body: [] });
-      console.log('[slash] global limpo (evita duplicata com guild)');
-    } else {
+    } else if (doGuild && !guildIds.length) {
+      console.warn('[slash] modo guild sem servidores em cache');
+    }
+
+    if (doGlobal) {
       await rest.put(Routes.applicationCommands(appId), { body: merged });
       console.log(
-        `[slash] global: ${merged.length} comandos (sem guild em cache)`
+        `[slash] global: ${merged.length} comandos (pode demorar a atualizar no app)`
       );
+    } else {
+      // limpa global para não misturar com lista antiga de 100
+      await rest.put(Routes.applicationCommands(appId), { body: [] });
+      console.log('[slash] global limpo (SLASH_REGISTER=guild)');
     }
+
     console.log(
-      `[slash] total ${merged.length} (${fromRegistry.length} registry + catálogo)`
+      `[slash] modo=${mode} · total ${merged.length} (${fromRegistry.length} registry + catálogo)`
+    );
+    console.log(
+      `[slash] nomes: ${merged.map((c) => c.name).join(', ')}`
     );
     console.log(
       `[registry] prefix: ${listCommands().map((c) => c.name).join(', ')}`

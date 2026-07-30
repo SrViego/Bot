@@ -42,27 +42,33 @@ function messageFromInteraction(interaction, content, opts = {}) {
     }
   };
 
-  async function reply(payload) {
+  let firstResponseDone = false;
+
+  async function respond(payload) {
     const p = asThemedPayload(payload);
-    if (interaction.deferred || interaction.replied) {
+    // deferred: primeira resposta = editReply; depois followUp
+    if (interaction.deferred && !firstResponseDone) {
+      firstResponseDone = true;
+      return interaction.editReply(p);
+    }
+    if (interaction.replied || interaction.deferred) {
       return interaction.followUp(p);
     }
+    firstResponseDone = true;
     return interaction.reply(p);
   }
 
-  // canal real com send → followUp (handlers que usam channel.send)
+  async function reply(payload) {
+    return respond(payload);
+  }
+
+  // canal real com send → mesma fila de resposta da interaction
   const baseChannel = interaction.channel;
   const channelProxy = baseChannel
     ? new Proxy(baseChannel, {
         get(target, prop, receiver) {
           if (prop === 'send') {
-            return async (payload) => {
-              const p = asThemedPayload(payload);
-              if (interaction.deferred || interaction.replied) {
-                return interaction.followUp(p);
-              }
-              return interaction.reply(p);
-            };
+            return async (payload) => respond(payload);
           }
           return Reflect.get(target, prop, receiver);
         }

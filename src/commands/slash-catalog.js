@@ -518,17 +518,19 @@ async function handleCatalogSlash(interaction, data) {
   const t0 = Date.now();
   const label = `/${entry.name}`;
   try {
+    // evita "aplicativo não respondeu" em handlers lentos (música, padaria png…)
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply();
+    }
+
     const content = entry.toContent(interaction);
     const msg = messageFromInteraction(interaction, content);
     const result = await entry.handler(msg, data);
-    // handlers retornam false se não reconheceram — ainda contamos como consumido se era o cmd certo
+
     if (result === false) {
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          content: `Não consegui executar \`/${entry.name}\`. Tente o prefixo: \`${content}\``,
-          ephemeral: true
-        });
-      }
+      await interaction.editReply({
+        content: `Não consegui executar \`/${entry.name}\`. Tente: \`${content}\``
+      }).catch(() => {});
       trackCommand(label, {
         guildId: interaction.guildId,
         userId: interaction.user.id,
@@ -537,15 +539,21 @@ async function handleCatalogSlash(interaction, data) {
       });
       return true;
     }
-    // se o handler não respondeu (alguns só retornam true sem reply síncrono), evita "interaction failed"
-    if (!interaction.replied && !interaction.deferred) {
-      // defer already done? some async bakery/music reply later — wait a tick
-      await new Promise((r) => setImmediate(r));
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.deferReply({ ephemeral: true }).catch(() => {});
-        await interaction.editReply({ content: '✅ Comando processado.' }).catch(() => {});
+
+    // handler async que ainda não respondeu
+    if (interaction.deferred && !interaction.replied) {
+      // editReply ainda não foi chamado (bridge marca replied só no reply da API;
+      // deferred+editReply seta replied). Se ficou só deferred, manda ok genérico.
+      try {
+        const fetched = await interaction.fetchReply().catch(() => null);
+        if (!fetched || (fetched.content === '' && !fetched.embeds?.length && !fetched.attachments?.size)) {
+          await interaction.editReply({ content: '✅ Pronto.' }).catch(() => {});
+        }
+      } catch {
+        /* ignore */
       }
     }
+
     trackCommand(label, {
       guildId: interaction.guildId,
       userId: interaction.user.id,
@@ -560,8 +568,10 @@ async function handleCatalogSlash(interaction, data) {
       userId: interaction.user.id
     });
     try {
-      if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: '⚠️ Erro ao executar o comando.', ephemeral: true });
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content: '⚠️ Erro ao executar o comando.' }).catch(() =>
+          interaction.followUp({ content: '⚠️ Erro ao executar o comando.', ephemeral: true })
+        );
       } else {
         await interaction.reply({ content: '⚠️ Erro ao executar o comando.', ephemeral: true });
       }

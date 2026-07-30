@@ -10,7 +10,19 @@ const { asThemedPayload } = require('../systems/theme');
  * @param {{ mentionUser?: import('discord.js').User|null }} [opts]
  */
 function messageFromInteraction(interaction, content, opts = {}) {
-  const mentionUser = opts.mentionUser ?? null;
+  const mentionUser =
+    opts.mentionUser !== undefined
+      ? opts.mentionUser
+      : interaction.options?.getUser?.('user') ||
+        interaction.options?.getUser?.('alvo') ||
+        interaction.options?.getUser?.('membro') ||
+        null;
+
+  const mentionMember =
+    (mentionUser && interaction.options?.getMember?.('user')) ||
+    (mentionUser && interaction.options?.getMember?.('alvo')) ||
+    (mentionUser && interaction.options?.getMember?.('membro')) ||
+    null;
 
   const users = {
     first: () => mentionUser,
@@ -18,6 +30,15 @@ function messageFromInteraction(interaction, content, opts = {}) {
     has: (id) => Boolean(mentionUser && mentionUser.id === id),
     get size() {
       return mentionUser ? 1 : 0;
+    }
+  };
+
+  const members = {
+    first: () => mentionMember,
+    get: (id) => (mentionMember && mentionMember.id === id ? mentionMember : null),
+    has: (id) => Boolean(mentionMember && mentionMember.id === id),
+    get size() {
+      return mentionMember ? 1 : 0;
     }
   };
 
@@ -29,25 +50,38 @@ function messageFromInteraction(interaction, content, opts = {}) {
     return interaction.reply(p);
   }
 
+  // canal real com send → followUp (handlers que usam channel.send)
+  const baseChannel = interaction.channel;
+  const channelProxy = baseChannel
+    ? new Proxy(baseChannel, {
+        get(target, prop, receiver) {
+          if (prop === 'send') {
+            return async (payload) => {
+              const p = asThemedPayload(payload);
+              if (interaction.deferred || interaction.replied) {
+                return interaction.followUp(p);
+              }
+              return interaction.reply(p);
+            };
+          }
+          return Reflect.get(target, prop, receiver);
+        }
+      })
+    : null;
+
   return {
     client: interaction.client,
     guild: interaction.guild,
     member: interaction.member,
     author: interaction.user,
     user: interaction.user,
-    channel: interaction.channel,
+    channel: channelProxy,
     channelId: interaction.channelId,
     content: content || `!${interaction.commandName}`,
-    mentions: {
-      users,
-      members: {
-        first: () => null,
-        get: () => null,
-        has: () => false,
-        size: 0
-      }
-    },
-    reply
+    mentions: { users, members },
+    reply,
+    // alguns handlers leem permissions no member
+    react: async () => null
   };
 }
 

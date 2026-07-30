@@ -28,13 +28,13 @@ const { handleTicketCommand, handleTicketButton } = require('./systems/tickets')
 const { handleEventCommand } = require('./systems/guild-events');
 const { handleStarboardCommand, handleStarboardReaction } = require('./systems/starboard');
 
-// Registry: ping, lore, ajuda, music + handlers legados (economia, poke, util…)
+// Registry + catálogo completo de slash
 const {
   registerSlashCommands,
   dispatchPrefix,
-  dispatchSlash
+  dispatchSlash,
+  handleCatalogSlash
 } = require('./commands/load');
-const { handleLegacySlash } = require('./commands/slash-legacy');
 
 const token = process.env.DISCORD_TOKEN;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
@@ -93,10 +93,10 @@ client.on('raw', (packet) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
     if (await handleTicketButton(interaction, data)) return;
-    // registry first (ping, lore, ajuda)
+    // registry com execute próprio (ping, lore, ajuda)
     if (await dispatchSlash(interaction, data)) return;
-    // legacy slash (padaria, quest, perfil, evento)
-    if (await handleLegacySlash(interaction, data)) return;
+    // catálogo: resto dos slash → bridge pro handler de prefixo
+    if (await handleCatalogSlash(interaction, data)) return;
   } catch (err) {
     console.error('interaction:', err);
     trackError('interaction', err, {

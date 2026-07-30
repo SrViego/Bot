@@ -26,7 +26,9 @@ const defaultGuildConfig = {
   /** Canal pro ranking semanal automático */
   rankingChannelId: null,
   /** ISO week key da última postagem (ex: 2026-W31) */
-  lastWeeklyRankKey: null
+  lastWeeklyRankKey: null,
+  /** Canal de alerta staff (Lavalink / saúde) */
+  staffAlertChannelId: null
 };
 
 const defaultData = {

@@ -31,7 +31,8 @@ const defaultGuildConfig = {
   starboardMin: 3,
   events: null,
   rankingChannelId: null,
-  lastWeeklyRankKey: null
+  lastWeeklyRankKey: null,
+  staffAlertChannelId: null
 };
 
 const defaultData = {

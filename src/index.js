@@ -51,6 +51,9 @@ if (token.length < 50) {
 }
 
 const data = loadData();
+// exposto p/ health-alerts (Lavalink connect/disconnect)
+// (client ainda não existe — setamos no ready)
+
 pruneOldMetrics();
 backupDataDailyIfNeeded();
 
@@ -68,6 +71,7 @@ const client = new Client({
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Bot online como ${readyClient.user.tag}`);
+  readyClient.morganaData = data;
   trackCommand('system:ready', { ok: true, detail: readyClient.user.tag });
   await initLavalink(readyClient);
   await registerSlashCommands(readyClient);
@@ -96,6 +100,14 @@ client.once(Events.ClientReady, async (readyClient) => {
   setTimeout(() => {
     processWeeklyRankings(readyClient, data).catch(() => {});
   }, 90_000);
+
+  // re-checa saúde Lavalink periodicamente (alertas staff)
+  const { processHealthAlerts } = require('./systems/health-alerts');
+  setInterval(() => {
+    processHealthAlerts(readyClient, data).catch((err) => {
+      console.error('health:', err.message);
+    });
+  }, 5 * 60 * 1000);
 });
 
 client.on('raw', (packet) => {

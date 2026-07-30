@@ -35,6 +35,9 @@ Métricas (staff): `!metrics` · `!metrics errors`
 DB: `DATA_BACKEND=json|sqlite` · migrar: `node scripts/migrate-json-to-sqlite.js`  
 Chegada: `!inicio` / `/inicio` — trilho da 1ª semana  
 Economia: `!economia` · `!ofrenda` · `!ranking` · `!config ranking #canal`  
+Slash agrupados: `/padaria` `/poke` `/loja` `/musica` `/mod` `/staff`… (prefixo `!` igual)  
+Staff: `!config alerta #canal` (Lavalink) · testes: `npm test` · backup: [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md)  
+
 
 Comandos (registry): `src/commands/` — `!ping` `!lore` `!ajuda` `!play`…  
 SQLite: `saveUser` / `mutateUser` / `saveDataSoon` (semana 4)

@@ -14,7 +14,7 @@ const HELP_PAGES = [
       {
         name: '🌿 Novo aqui?',
         value:
-          '`!inicio` / `/inicio` — **trilho da 1ª semana** (daily → chat → quest → padaria → poke → perfil)\nRecompensa ao completar tudo.'
+          '`!inicio` / `/inicio` — **trilho da 1ª semana** (daily → chat → quest → padaria → poke → perfil)\nRecompensa ao completar tudo.\nSlash agrupados: `/padaria assar` · `/poke wild` · `/loja comprar` · `/musica play`'
       },
       {
         name: '🛠️ Utilidade',

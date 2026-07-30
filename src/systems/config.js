@@ -56,6 +56,11 @@ function handleConfigCommand(message, data) {
     return true;
   }
 
+  if (subcommand === 'alerta' || subcommand === 'alert' || subcommand === 'alerts') {
+    setStaffAlertChannel(message, args, data);
+    return true;
+  }
+
   message.reply({
     title: '⚙️ Uso do !config',
     description: [
@@ -66,7 +71,8 @@ function handleConfigCommand(message, data) {
       '`!config ticket on|off`',
       '`!config ticketcategoria #categoria | off`',
       '`!config ticketcargo @cargo | off`',
-      '`!config ranking #canal | off` — ranking semanal automático'
+      '`!config ranking #canal | off` — ranking semanal automático',
+      '`!config alerta #canal | off` — alertas Lavalink/bot'
     ].join('\n')
   });
   return true;
@@ -121,6 +127,11 @@ function showConfigPanel(message, data) {
         inline: true
       },
       {
+        name: '🚨 Alerta staff',
+        value: config.staffAlertChannelId ? `<#${config.staffAlertChannelId}>` : '*desativado*',
+        inline: true
+      },
+      {
         name: '🛠️ Comandos',
         value: [
           '`!config logs #canal | off`',
@@ -130,7 +141,8 @@ function showConfigPanel(message, data) {
           '`!config ticket on|off`',
           '`!config ticketcategoria #categoria | off`',
           '`!config ticketcargo @cargo | off`',
-          '`!config ranking #canal | off`'
+          '`!config ranking #canal | off`',
+          '`!config alerta #canal | off`'
         ].join('\n'),
         inline: false
       }
@@ -159,6 +171,29 @@ function setRankingChannel(message, args, data) {
   saveData(data);
   message.reply(
     `Ranking semanal em ${channel}. Posta ao virar a semana ISO · manual: \`!ranking\`.`
+  );
+}
+
+function setStaffAlertChannel(message, args, data) {
+  const guildData = getGuildData(data, message.guild.id);
+
+  if (args[2]?.toLowerCase() === 'off') {
+    guildData.config.staffAlertChannelId = null;
+    saveData(data);
+    message.reply('Canal de alerta staff desativado.');
+    return;
+  }
+
+  const channel = message.mentions.channels.first();
+  if (!channel || !channel.isTextBased()) {
+    message.reply('Use: `!config alerta #canal` ou `!config alerta off`');
+    return;
+  }
+
+  guildData.config.staffAlertChannelId = channel.id;
+  saveData(data);
+  message.reply(
+    `Alertas de staff (Lavalink etc.) em ${channel}.`
   );
 }
 

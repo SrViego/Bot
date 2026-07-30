@@ -41,9 +41,17 @@ function addXpFromMessage(message, data) {
     userData.level += 1;
     if (userData.level >= 5) unlocked.push(...grantAchievements(userData, ["level_5"]));
     if (userData.level >= 10) unlocked.push(...grantAchievements(userData, ["level_10"]));
+    let loreLine = '';
+    try {
+      const { QUOTES } = require('./lore');
+      const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+      loreLine = `\n*“${q.q}”* — ${q.t}`;
+    } catch {
+      /* ignore */
+    }
     message.channel.send({
       title: '🌟 Level up!',
-      description: `${message.author} alcançou o **nível ${userData.level}**!`,
+      description: `${message.author} alcançou o **nível ${userData.level}**!${loreLine}`,
       thumbnail: message.author.displayAvatarURL({ size: 128 }),
       color: 0xf1c40f
     });

@@ -28,6 +28,8 @@ const SEARCH_FALLBACKS = (process.env.LAVALINK_SEARCH_FALLBACKS || "ytsearch,ytm
 const DEFAULT_VOLUME = Number.parseInt(process.env.LAVALINK_DEFAULT_VOLUME || "80", 10);
 
 let lavalinkImportPromise;
+/** Estado simples p/ alertas de staff */
+let lavalinkHealthy = false;
 let discordClient;
 
 function getLavalinkModule() {
@@ -78,10 +80,24 @@ async function initLavalink(client) {
 
   manager.nodeManager.on("connect", (node) => {
     console.log(`[lavalink] conectado ao node ${node.id}`);
+    lavalinkHealthy = true;
+    try {
+      const { notifyLavalinkState } = require("./health-alerts");
+      notifyLavalinkState(client, true);
+    } catch {
+      /* ignore */
+    }
   });
 
   manager.nodeManager.on("disconnect", (node, reason) => {
     console.warn(`[lavalink] node ${node.id} desconectou:`, reason?.reason ?? reason);
+    lavalinkHealthy = false;
+    try {
+      const { notifyLavalinkState } = require("./health-alerts");
+      notifyLavalinkState(client, false, reason?.reason ?? reason);
+    } catch {
+      /* ignore */
+    }
   });
 
   manager.nodeManager.on("error", (node, error) => {
@@ -628,8 +644,13 @@ async function handleMusicCommand(message, data) {
   return false;
 }
 
+function isLavalinkHealthy() {
+  return lavalinkHealthy;
+}
+
 module.exports = {
   handleMusicCommand,
   initLavalink,
-  handleLavalinkRawData
+  handleLavalinkRawData,
+  isLavalinkHealthy
 };

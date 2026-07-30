@@ -1,7 +1,7 @@
 /**
- * Catálogo completo de slash commands.
- * Cada entrada vira JSON no Discord e, no uso, monta `!cmd …` + bridge pro handler.
- * Limite Discord: 100 comandos globais — ficamos bem abaixo.
+ * Catálogo slash reorganizado (Sprint 3).
+ * Poucos comandos raiz + subcomandos — limite Discord 100, ~25 subcmds cada.
+ * Cada uso monta `!cmd …` e reutiliza o handler de prefixo.
  */
 
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
@@ -36,575 +36,785 @@ const { handleModLogCommand } = require('../systems/modlogs');
 const { handleOnboardingCommand } = require('../systems/onboarding');
 const { handleRankingCommand } = require('../systems/weekly-rank');
 
-const str = (name, desc, required = false) => (b) =>
-  b.addStringOption((o) => o.setName(name).setDescription(desc).setRequired(required));
-const user = (name, desc, required = false) => (b) =>
-  b.addUserOption((o) => o.setName(name).setDescription(desc).setRequired(required));
-const int = (name, desc, required = false) => (b) =>
-  b.addIntegerOption((o) => o.setName(name).setDescription(desc).setRequired(required));
-
-function mentionContent(cmd, interaction, extra = '') {
-  const u =
-    interaction.options.getUser('user') ||
-    interaction.options.getUser('alvo') ||
-    interaction.options.getUser('membro');
-  const rest = [u ? `<@${u.id}>` : null, extra].filter(Boolean).join(' ');
-  return rest ? `!${cmd} ${rest}` : `!${cmd}`;
-}
-
-function optStr(interaction, ...names) {
+function optStr(i, ...names) {
   for (const n of names) {
-    const v = interaction.options.getString(n);
+    const v = i.options.getString(n);
     if (v != null && v !== '') return v;
   }
   return '';
 }
-
-function optInt(interaction, ...names) {
+function optInt(i, ...names) {
   for (const n of names) {
-    const v = interaction.options.getInteger(n);
+    const v = i.options.getInteger(n);
     if (v != null) return String(v);
   }
   return '';
 }
+function optUser(i, ...names) {
+  for (const n of names) {
+    const v = i.options.getUser(n);
+    if (v) return v;
+  }
+  return null;
+}
+function mention(cmd, i, extra = '') {
+  const u = optUser(i, 'user', 'alvo', 'membro');
+  const rest = [u ? `<@${u.id}>` : null, extra].filter(Boolean).join(' ');
+  return rest ? `!${cmd} ${rest}` : `!${cmd}`;
+}
+function join(...parts) {
+  return parts.filter((p) => p != null && String(p).trim() !== '').join(' ').trim();
+}
+
+/**
+ * Entry: { name, description, permission?, subcommands?: [...], options?: fn, toContent, handler }
+ * subcommand: { name, description, options?: (sc) => void, toContent: (i) => string }
+ */
+function buildOne(entry) {
+  let b = new SlashCommandBuilder()
+    .setName(entry.name)
+    .setDescription((entry.description || entry.name).slice(0, 100));
+  if (entry.permission) b = b.setDefaultMemberPermissions(entry.permission);
+
+  if (entry.subcommands?.length) {
+    for (const sub of entry.subcommands) {
+      b.addSubcommand((sc) => {
+        sc.setName(sub.name).setDescription((sub.description || sub.name).slice(0, 100));
+        if (typeof sub.options === 'function') sub.options(sc);
+        return sc;
+      });
+    }
+  } else if (typeof entry.options === 'function') {
+    entry.options(b);
+  }
+  return b.toJSON();
+}
 
 /** @type {Array<object>} */
 const ENTRIES = [
-  // ── Chegada ──────────────────────────────────────────────
+  // ── Standalone ───────────────────────────────────────────
   {
     name: 'inicio',
-    description: 'Trilho da 1ª semana — checklist e recompensa',
+    description: 'Trilho da 1ª semana',
     toContent: () => '!inicio',
     handler: handleOnboardingCommand
   },
-
-  // ── Economia ─────────────────────────────────────────────
-  { name: 'pontos', description: 'Ver seus pontos (ou de alguém)', build: [user('user', 'Membro')], toContent: (i) => mentionContent('pontos', i), handler: handlePointsCommand },
-  { name: 'daily', description: 'Resgatar daily de pontos', toContent: () => '!daily', handler: handlePointsCommand },
-  { name: 'rankpontos', description: 'Ranking de pontos', toContent: () => '!rankpontos', handler: handlePointsCommand },
-  { name: 'xp', description: 'Ver XP e nível', build: [user('user', 'Membro')], toContent: (i) => mentionContent('xp', i), handler: handleXpCommand },
-  { name: 'rankxp', description: 'Ranking de XP', toContent: () => '!rankxp', handler: handleXpCommand },
-  { name: 'rep', description: 'Dar +1 reputação', build: [user('user', 'Membro', true)], toContent: (i) => mentionContent('rep', i), handler: handleReputationCommand },
-  { name: 'rankrep', description: 'Ranking de reputação', toContent: () => '!rankrep', handler: handleReputationCommand },
+  {
+    name: 'perfil',
+    description: 'Perfil completo',
+    options: (b) => b.addUserOption((o) => o.setName('user').setDescription('Membro')),
+    toContent: (i) => mention('perfil', i),
+    handler: handleProfileCommand
+  },
+  {
+    name: 'daily',
+    description: 'Resgatar daily de pontos',
+    toContent: () => '!daily',
+    handler: handlePointsCommand
+  },
   {
     name: 'quest',
     description: 'Quests diárias/semanais',
-    build: [
-      (b) =>
-        b.addStringOption((o) =>
-          o
-            .setName('acao')
-            .setDescription('lista ou resgatar')
-            .addChoices(
-              { name: 'Listar', value: 'lista' },
-              { name: 'Resgatar', value: 'pegar' }
-            )
-        )
-    ],
-    toContent: (i) => {
-      const a = optStr(i, 'acao');
-      return a === 'pegar' ? '!quest pegar' : '!quest';
-    },
+    options: (b) =>
+      b.addStringOption((o) =>
+        o
+          .setName('acao')
+          .setDescription('Listar ou resgatar')
+          .addChoices(
+            { name: 'Listar', value: 'lista' },
+            { name: 'Resgatar', value: 'pegar' }
+          )
+      ),
+    toContent: (i) => (optStr(i, 'acao') === 'pegar' ? '!quest pegar' : '!quest'),
     handler: handleQuestCommand
   },
   {
-    name: 'cosmetico',
-    description: 'Loja e cosméticos de perfil',
-    build: [
-      str('acao', 'loja | comprar | equipar | perfil'),
-      str('id', 'id do cosmético')
-    ],
-    toContent: (i) =>
-      `!cosmetico ${[optStr(i, 'acao') || 'loja', optStr(i, 'id')].filter(Boolean).join(' ')}`.trim(),
-    handler: handleCosmeticsCommand
-  },
-  { name: 'loja', description: 'Abrir a loja', toContent: () => '!loja', handler: handleShopCommand },
-  { name: 'item', description: 'Detalhe de um item', build: [str('id', 'id do item', true)], toContent: (i) => `!item ${optStr(i, 'id')}`, handler: handleShopCommand },
-  { name: 'comprar', description: 'Comprar item da loja', build: [str('id', 'id do item', true)], toContent: (i) => `!comprar ${optStr(i, 'id')}`, handler: handleShopCommand },
-  {
-    name: 'vender',
-    description: 'Vender item do inventário',
-    build: [str('id', 'id do item', true), int('quantidade', 'quantidade')],
-    toContent: (i) => `!vender ${optStr(i, 'id')} ${optInt(i, 'quantidade')}`.trim(),
-    handler: handleShopCommand
-  },
-  {
-    name: 'presentear',
-    description: 'Presentear item a alguém',
-    build: [user('user', 'Membro', true), str('id', 'id do item', true)],
-    toContent: (i) => mentionContent('presentear', i, optStr(i, 'id')),
-    handler: handleShopCommand
-  },
-  { name: 'inventario', description: 'Seu inventário', toContent: () => '!inventario', handler: handleShopCommand },
-  { name: 'usar', description: 'Usar item do inventário', build: [str('id', 'id do item', true)], toContent: (i) => `!usar ${optStr(i, 'id')}`, handler: handleShopCommand },
-  { name: 'efeitos', description: 'Buffs ativos', toContent: () => '!efeitos', handler: handleShopCommand },
-  {
-    name: 'cambio',
-    description: 'Câmbio (ou vazio = ajuda). Prefixo: !economia !ofrenda',
-    build: [str('texto', 'ex: pontos padaria 100 — vazio mostra ajuda')],
-    toContent: (i) => {
-      const t = optStr(i, 'texto');
-      return t ? `!cambio ${t}` : '!cambio';
-    },
-    handler: handleExchangeCommand
-  },
-  {
     name: 'ranking',
-    description: 'Top pontos / padaria / poke do servidor',
+    description: 'Tops do servidor',
     toContent: () => '!ranking',
     handler: handleRankingCommand
   },
   {
-    name: 'apostar',
-    description: 'Apostar no próximo coinflip',
-    build: [str('texto', 'ex: cara 50', true)],
-    toContent: (i) => `!apostar ${optStr(i, 'texto')}`,
-    handler: handleBetCommand
+    name: 'serverstats',
+    description: 'Dashboard do servidor',
+    toContent: () => '!serverstats',
+    handler: handleServerStatsCommand
   },
-  {
-    name: 'conquistas',
-    description: 'Conquistas desbloqueadas',
-    build: [user('user', 'Membro')],
-    toContent: (i) => mentionContent('conquistas', i),
-    handler: handleAchievementsCommand
-  },
-
-  // ── Social / util ────────────────────────────────────────
-  {
-    name: 'perfil',
-    description: 'Perfil completo',
-    build: [user('user', 'Membro')],
-    toContent: (i) => mentionContent('perfil', i),
-    handler: handleProfileCommand
-  },
-  {
-    name: 'avatar',
-    description: 'Avatar de um membro',
-    build: [user('user', 'Membro')],
-    toContent: (i) => mentionContent('avatar', i),
-    handler: handleUtilityCommand
-  },
-  {
-    name: 'userinfo',
-    description: 'Info de um membro',
-    build: [user('user', 'Membro')],
-    toContent: (i) => mentionContent('userinfo', i),
-    handler: handleUtilityCommand
-  },
-  { name: 'serverinfo', description: 'Info do servidor', toContent: () => '!serverinfo', handler: handleUtilityCommand },
-  {
-    name: 'say',
-    description: 'Fazer o bot falar (staff)',
-    build: [str('texto', 'Mensagem', true)],
-    toContent: (i) => `!say ${optStr(i, 'texto')}`,
-    handler: handleUtilityCommand
-  },
-  {
-    name: 'metrics',
-    description: 'Métricas do bot (Gerenciar servidor)',
-    build: [str('acao', 'vazio ou errors')],
-    toContent: (i) => `!metrics ${optStr(i, 'acao')}`.trim(),
-    handler: handleMetricsCommand,
-    permission: PermissionFlagsBits.ManageGuild
-  },
-  { name: 'serverstats', description: 'Dashboard do servidor', toContent: () => '!serverstats', handler: handleServerStatsCommand },
-
-  // ── Minigames ────────────────────────────────────────────
-  {
-    name: 'coinflip',
-    description: 'Cara ou coroa',
-    build: [str('texto', 'ex: cara 50', true)],
-    toContent: (i) => `!coinflip ${optStr(i, 'texto')}`,
-    handler: handleMinigameCommand
-  },
-  {
-    name: 'guess',
-    description: 'Adivinhar número',
-    build: [str('texto', 'ex: 3 50', true)],
-    toContent: (i) => `!guess ${optStr(i, 'texto')}`,
-    handler: handleMinigameCommand
-  },
-  { name: 'minigames', description: 'Lista de minigames', toContent: () => '!minigames', handler: handleMinigameCommand },
-
-  // ── Casamento ────────────────────────────────────────────
-  { name: 'casar', description: 'Pedir em casamento', build: [user('user', 'Membro', true)], toContent: (i) => mentionContent('casar', i), handler: handleMarriageCommand },
-  { name: 'aceitarcasamento', description: 'Aceitar pedido', toContent: () => '!aceitarcasamento', handler: handleMarriageCommand },
-  { name: 'recusarcasamento', description: 'Recusar pedido', toContent: () => '!recusarcasamento', handler: handleMarriageCommand },
-  { name: 'divorciar', description: 'Divórcio', toContent: () => '!divorciar', handler: handleMarriageCommand },
-  { name: 'casamento', description: 'Ver casamento', build: [user('user', 'Membro')], toContent: (i) => mentionContent('casamento', i), handler: handleMarriageCommand },
-
-  // ── Música ───────────────────────────────────────────────
-  {
-    name: 'play',
-    description: 'Tocar música (Lavalink)',
-    build: [str('query', 'Nome ou URL', true)],
-    toContent: (i) => `!play ${optStr(i, 'query')}`,
-    handler: handleMusicCommand
-  },
-  { name: 'skip', description: 'Pular faixa', toContent: () => '!skip', handler: handleMusicCommand },
-  { name: 'stop', description: 'Parar e limpar fila', toContent: () => '!stop', handler: handleMusicCommand },
-  { name: 'queue', description: 'Ver fila', toContent: () => '!queue', handler: handleMusicCommand },
-  { name: 'pause', description: 'Pausar', toContent: () => '!pause', handler: handleMusicCommand },
-  { name: 'resume', description: 'Continuar', toContent: () => '!resume', handler: handleMusicCommand },
-  { name: 'np', description: 'Tocando agora', toContent: () => '!np', handler: handleMusicCommand },
-  {
-    name: 'volume',
-    description: 'Volume 0–100',
-    build: [int('nivel', '0–100', true)],
-    toContent: (i) => `!volume ${optInt(i, 'nivel')}`,
-    handler: handleMusicCommand
-  },
-
-  // ── Padaria ──────────────────────────────────────────────
-  { name: 'padaria', description: 'Status da padaria', toContent: () => '!padaria', handler: handleBakeryCommand },
-  {
-    name: 'assar',
-    description: 'Assar receita em 1+ fornos',
-    build: [
-      str('receita', 'ex: pao'),
-      int('quantidade', 'quantos fornos (se não for “tudo”)'),
-      (b) =>
-        b.addStringOption((o) =>
-          o
-            .setName('tudo')
-            .setDescription('Encher todos os fornos livres?')
-            .setRequired(false)
-            .addChoices(
-              { name: 'Sim', value: 'sim' },
-              { name: 'Não', value: 'nao' }
-            )
-        )
-    ],
-    toContent: (i) => {
-      const r = optStr(i, 'receita');
-      const q = optInt(i, 'quantidade');
-      const all = ['sim', 's', 'yes', 'true', '1'].includes(
-        (optStr(i, 'tudo') || '').toLowerCase()
-      );
-      return `!assar ${[r, all ? 'tudo' : q].filter(Boolean).join(' ')}`.trim();
-    },
-    handler: handleBakeryCommand
-  },
-  {
-    name: 'repetir',
-    description: 'Repetir última receita (ou do histórico)',
-    build: [
-      str('receita', 'id, nome ou #1 do histórico'),
-      int('quantidade', 'quantos fornos'),
-      (b) =>
-        b.addStringOption((o) =>
-          o
-            .setName('tudo')
-            .setDescription('Encher todos os fornos livres?')
-            .setRequired(false)
-            .addChoices(
-              { name: 'Sim', value: 'sim' },
-              { name: 'Não', value: 'nao' }
-            )
-        )
-    ],
-    toContent: (i) => {
-      const r = optStr(i, 'receita');
-      const q = optInt(i, 'quantidade');
-      const all = ['sim', 's', 'yes', 'true', '1'].includes(
-        (optStr(i, 'tudo') || '').toLowerCase()
-      );
-      return `!repetir ${[r, all ? 'tudo' : q].filter(Boolean).join(' ')}`.trim();
-    },
-    handler: handleBakeryCommand
-  },
-  {
-    name: 'historico',
-    description: 'Últimas receitas que você assou',
-    toContent: () => '!historico',
-    handler: handleBakeryCommand
-  },
-  { name: 'servir', description: 'Servir o que está pronto', toContent: () => '!servir', handler: handleBakeryCommand },
-  { name: 'receitas', description: 'Receitas desbloqueadas', toContent: () => '!receitas', handler: handleBakeryCommand },
-  { name: 'forno', description: 'Comprar forno extra', toContent: () => '!forno', handler: handleBakeryCommand },
-  {
-    name: 'upgrade',
-    description: 'Upgrades da padaria',
-    build: [str('id', 'speed | profit | mastery | luck | charm')],
-    toContent: (i) => `!upgrade ${optStr(i, 'id')}`.trim(),
-    handler: handleBakeryCommand
-  },
-  {
-    name: 'pedido',
-    description: 'Pedidos de NPC',
-    build: [str('acao', 'vazio ou novo')],
-    toContent: (i) => `!pedido ${optStr(i, 'acao')}`.trim(),
-    handler: handleBakeryCommand
-  },
-  { name: 'fornonotify', description: 'DM quando o forno fica pronto', toContent: () => '!fornonotify', handler: handleBakeryCommand },
-  { name: 'rankpadaria', description: 'Ranking da padaria', toContent: () => '!rankpadaria', handler: handleBakeryCommand },
-
-  // ── Eventos ──────────────────────────────────────────────
   {
     name: 'evento',
     description: 'Eventos do servidor',
-    build: [str('texto', 'status | happyhour 60 | padaria | praid | boss | parar')],
+    options: (b) =>
+      b.addStringOption((o) =>
+        o.setName('texto').setDescription('status | happyhour 60 | padaria | parar')
+      ),
     toContent: (i) => `!evento ${optStr(i, 'texto') || 'status'}`.trim(),
     handler: handleEventCommand
   },
+  {
+    name: 'conquistas',
+    description: 'Conquistas',
+    options: (b) => b.addUserOption((o) => o.setName('user').setDescription('Membro')),
+    toContent: (i) => mention('conquistas', i),
+    handler: handleAchievementsCommand
+  },
+  {
+    name: 'apostar',
+    description: 'Apostar no próximo coinflip',
+    options: (b) =>
+      b.addStringOption((o) =>
+        o.setName('texto').setDescription('ex: cara 50').setRequired(true)
+      ),
+    toContent: (i) => `!apostar ${optStr(i, 'texto')}`,
+    handler: handleBetCommand
+  },
 
-  // ── Pokémon (principais; canal exclusivo) ────────────────
-  { name: 'phelp', description: 'Ajuda Pokémon', toContent: () => '!phelp', handler: handlePokemonCommand },
+  // ── /pontos ──────────────────────────────────────────────
   {
-    name: 'pstart',
-    description: 'Iniciar aventura Pokémon',
-    build: [str('starter', 'id ou nome do starter')],
-    toContent: (i) => `!pstart ${optStr(i, 'starter')}`.trim(),
-    handler: handlePokemonCommand
+    name: 'pontos',
+    description: 'Pontos e ranking',
+    subcommands: [
+      {
+        name: 'ver',
+        description: 'Ver pontos',
+        options: (sc) => sc.addUserOption((o) => o.setName('user').setDescription('Membro')),
+        toContent: (i) => mention('pontos', i)
+      },
+      { name: 'rank', description: 'Ranking de pontos', toContent: () => '!rankpontos' }
+    ],
+    handler: handlePointsCommand
   },
-  { name: 'pwild', description: 'Encontro selvagem', toContent: () => '!pwild', handler: handlePokemonCommand },
-  {
-    name: 'pcatch',
-    description: 'Capturar selvagem',
-    build: [str('ball', 'pokeball etc')],
-    toContent: (i) => `!pcatch ${optStr(i, 'ball')}`.trim(),
-    handler: handlePokemonCommand
-  },
-  {
-    name: 'pdex',
-    description: 'Pokédex / info',
-    build: [str('query', 'nome ou número')],
-    toContent: (i) => `!pdex ${optStr(i, 'query')}`.trim(),
-    handler: handlePokemonCommand
-  },
-  { name: 'pteam', description: 'Seu time', toContent: () => '!pteam', handler: handlePokemonCommand },
-  {
-    name: 'pbox',
-    description: 'Caixa de Pokémon',
-    build: [int('pagina', 'página')],
-    toContent: (i) => `!pbox ${optInt(i, 'pagina')}`.trim(),
-    handler: handlePokemonCommand
-  },
-  {
-    name: 'pmain',
-    description: 'Definir Pokémon principal',
-    build: [str('slot', 'slot ou id')],
-    toContent: (i) => `!pmain ${optStr(i, 'slot')}`.trim(),
-    handler: handlePokemonCommand
-  },
-  { name: 'pmon', description: 'Ver Pokémon principal', toContent: () => '!pmon', handler: handlePokemonCommand },
-  { name: 'pevolve', description: 'Evoluir principal', toContent: () => '!pevolve', handler: handlePokemonCommand },
-  { name: 'ploja', description: 'Loja Pokémon', toContent: () => '!ploja', handler: handlePokemonCommand },
-  {
-    name: 'pbuy',
-    description: 'Comprar na loja Pokémon',
-    build: [str('item', 'id do item', true)],
-    toContent: (i) => `!pbuy ${optStr(i, 'item')}`,
-    handler: handlePokemonCommand
-  },
-  { name: 'pbag', description: 'Mochila Pokémon', toContent: () => '!pbag', handler: handlePokemonCommand },
-  {
-    name: 'puse',
-    description: 'Usar item Pokémon',
-    build: [str('item', 'id do item', true)],
-    toContent: (i) => `!puse ${optStr(i, 'item')}`,
-    handler: handlePokemonCommand
-  },
-  {
-    name: 'pbattle',
-    description: 'Desafiar PvP',
-    build: [user('user', 'Oponente', true)],
-    toContent: (i) => mentionContent('pbattle', i),
-    handler: handlePokemonCommand
-  },
-  { name: 'paccept', description: 'Aceitar duelo', toContent: () => '!paccept', handler: handlePokemonCommand },
-  { name: 'pdeny', description: 'Recusar duelo', toContent: () => '!pdeny', handler: handlePokemonCommand },
-  {
-    name: 'pmove',
-    description: 'Usar golpe no PvP',
-    build: [str('golpe', '1–4 ou nome', true)],
-    toContent: (i) => `!pmove ${optStr(i, 'golpe')}`,
-    handler: handlePokemonCommand
-  },
-  { name: 'pforfeit', description: 'Desistir do PvP', toContent: () => '!pforfeit', handler: handlePokemonCommand },
-  { name: 'pstatus', description: 'Status Pokémon', toContent: () => '!pstatus', handler: handlePokemonCommand },
-  { name: 'pdaily', description: 'Daily Pokémon', toContent: () => '!pdaily', handler: handlePokemonCommand },
 
-  // ── Tickets / staff ──────────────────────────────────────
+  // ── /xp ──────────────────────────────────────────────────
+  {
+    name: 'xp',
+    description: 'XP e ranking de nível',
+    subcommands: [
+      {
+        name: 'ver',
+        description: 'Ver XP',
+        options: (sc) => sc.addUserOption((o) => o.setName('user').setDescription('Membro')),
+        toContent: (i) => mention('xp', i)
+      },
+      { name: 'rank', description: 'Ranking de XP', toContent: () => '!rankxp' }
+    ],
+    handler: handleXpCommand
+  },
+
+  // ── /rep ─────────────────────────────────────────────────
+  {
+    name: 'rep',
+    description: 'Reputação',
+    subcommands: [
+      {
+        name: 'dar',
+        description: 'Dar +1 rep',
+        options: (sc) =>
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true)),
+        toContent: (i) => mention('rep', i)
+      },
+      { name: 'rank', description: 'Ranking de rep', toContent: () => '!rankrep' }
+    ],
+    handler: handleReputationCommand
+  },
+
+  // ── /economia ────────────────────────────────────────────
+  {
+    name: 'economia',
+    description: 'Câmbio, guia e oferenda',
+    subcommands: [
+      { name: 'guia', description: 'Como funciona a economia', toContent: () => '!economia' },
+      {
+        name: 'cambio',
+        description: 'Converter moedas (taxa 45%)',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('texto').setDescription('ex: pontos padaria 100').setRequired(true)
+          ),
+        toContent: (i) => `!cambio ${optStr(i, 'texto')}`
+      },
+      {
+        name: 'ofrenda',
+        description: 'Doar pontos ao hall (sink)',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('quantidade').setDescription('ex: 50 ou tudo').setRequired(true)
+          ),
+        toContent: (i) => `!ofrenda ${optStr(i, 'quantidade')}`
+      }
+    ],
+    handler: handleExchangeCommand
+  },
+
+  // ── /loja ────────────────────────────────────────────────
+  {
+    name: 'loja',
+    description: 'Loja, inventário e itens',
+    subcommands: [
+      { name: 'ver', description: 'Abrir a loja', toContent: () => '!loja' },
+      {
+        name: 'item',
+        description: 'Detalhe de um item',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('id').setDescription('id do item').setRequired(true)),
+        toContent: (i) => `!item ${optStr(i, 'id')}`
+      },
+      {
+        name: 'comprar',
+        description: 'Comprar item',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('id').setDescription('id do item').setRequired(true)),
+        toContent: (i) => `!comprar ${optStr(i, 'id')}`
+      },
+      {
+        name: 'vender',
+        description: 'Vender item',
+        options: (sc) => {
+          sc.addStringOption((o) => o.setName('id').setDescription('id').setRequired(true));
+          sc.addIntegerOption((o) => o.setName('quantidade').setDescription('qtd'));
+          return sc;
+        },
+        toContent: (i) => join('!vender', optStr(i, 'id'), optInt(i, 'quantidade'))
+      },
+      {
+        name: 'presentear',
+        description: 'Presentear alguém',
+        options: (sc) => {
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true));
+          sc.addStringOption((o) => o.setName('id').setDescription('id do item').setRequired(true));
+          return sc;
+        },
+        toContent: (i) => mention('presentear', i, optStr(i, 'id'))
+      },
+      { name: 'inventario', description: 'Seu inventário', toContent: () => '!inventario' },
+      {
+        name: 'usar',
+        description: 'Usar item',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('id').setDescription('id').setRequired(true)),
+        toContent: (i) => `!usar ${optStr(i, 'id')}`
+      },
+      { name: 'efeitos', description: 'Buffs ativos', toContent: () => '!efeitos' }
+    ],
+    handler: handleShopCommand
+  },
+
+  // ── /cosmetico ───────────────────────────────────────────
+  {
+    name: 'cosmetico',
+    description: 'Cosméticos de perfil',
+    options: (b) => {
+      b.addStringOption((o) =>
+        o.setName('acao').setDescription('loja | comprar | equipar | perfil')
+      );
+      b.addStringOption((o) => o.setName('id').setDescription('id do cosmético'));
+      return b;
+    },
+    toContent: (i) =>
+      join('!cosmetico', optStr(i, 'acao') || 'loja', optStr(i, 'id')),
+    handler: handleCosmeticsCommand
+  },
+
+  // ── /padaria ─────────────────────────────────────────────
+  {
+    name: 'padaria',
+    description: 'Padaria idle (canal exclusivo)',
+    subcommands: [
+      { name: 'status', description: 'Status da padaria', toContent: () => '!padaria' },
+      {
+        name: 'assar',
+        description: 'Assar em 1+ fornos',
+        options: (sc) => {
+          sc.addStringOption((o) => o.setName('receita').setDescription('ex: pao'));
+          sc.addIntegerOption((o) => o.setName('quantidade').setDescription('fornos'));
+          sc.addStringOption((o) =>
+            o
+              .setName('tudo')
+              .setDescription('Encher fornos livres?')
+              .addChoices({ name: 'Sim', value: 'sim' }, { name: 'Não', value: 'nao' })
+          );
+          return sc;
+        },
+        toContent: (i) => {
+          const all = ['sim', 's', 'yes'].includes((optStr(i, 'tudo') || '').toLowerCase());
+          return join('!assar', optStr(i, 'receita'), all ? 'tudo' : optInt(i, 'quantidade'));
+        }
+      },
+      {
+        name: 'repetir',
+        description: 'Repetir última / histórico',
+        options: (sc) => {
+          sc.addStringOption((o) => o.setName('receita').setDescription('id ou #1'));
+          sc.addIntegerOption((o) => o.setName('quantidade').setDescription('fornos'));
+          sc.addStringOption((o) =>
+            o
+              .setName('tudo')
+              .setDescription('Encher fornos livres?')
+              .addChoices({ name: 'Sim', value: 'sim' }, { name: 'Não', value: 'nao' })
+          );
+          return sc;
+        },
+        toContent: (i) => {
+          const all = ['sim', 's', 'yes'].includes((optStr(i, 'tudo') || '').toLowerCase());
+          return join('!repetir', optStr(i, 'receita'), all ? 'tudo' : optInt(i, 'quantidade'));
+        }
+      },
+      { name: 'historico', description: 'Receitas recentes', toContent: () => '!historico' },
+      { name: 'servir', description: 'Servir o pronto', toContent: () => '!servir' },
+      { name: 'receitas', description: 'Lista de receitas', toContent: () => '!receitas' },
+      { name: 'forno', description: 'Comprar forno', toContent: () => '!forno' },
+      {
+        name: 'upgrade',
+        description: 'Upgrades',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('id').setDescription('speed | profit | …')),
+        toContent: (i) => join('!upgrade', optStr(i, 'id'))
+      },
+      {
+        name: 'pedido',
+        description: 'Pedidos NPC',
+        options: (sc) => sc.addStringOption((o) => o.setName('acao').setDescription('novo')),
+        toContent: (i) => join('!pedido', optStr(i, 'acao'))
+      },
+      { name: 'notify', description: 'DM quando o forno fica pronto', toContent: () => '!fornonotify' },
+      { name: 'rank', description: 'Ranking da padaria', toContent: () => '!rankpadaria' }
+    ],
+    handler: handleBakeryCommand
+  },
+
+  // ── /poke ────────────────────────────────────────────────
+  {
+    name: 'poke',
+    description: 'Pokémon (canal exclusivo)',
+    subcommands: [
+      { name: 'ajuda', description: 'Ajuda Pokémon', toContent: () => '!phelp' },
+      {
+        name: 'start',
+        description: 'Escolher inicial',
+        options: (sc) => sc.addStringOption((o) => o.setName('starter').setDescription('id')),
+        toContent: (i) => join('!pstart', optStr(i, 'starter'))
+      },
+      { name: 'wild', description: 'Encontro selvagem', toContent: () => '!pwild' },
+      {
+        name: 'catch',
+        description: 'Capturar',
+        options: (sc) => sc.addStringOption((o) => o.setName('ball').setDescription('pokeball…')),
+        toContent: (i) => join('!pcatch', optStr(i, 'ball'))
+      },
+      {
+        name: 'dex',
+        description: 'Pokédex',
+        options: (sc) => sc.addStringOption((o) => o.setName('query').setDescription('nome/nº')),
+        toContent: (i) => join('!pdex', optStr(i, 'query'))
+      },
+      { name: 'team', description: 'Time', toContent: () => '!pteam' },
+      {
+        name: 'box',
+        description: 'Caixa',
+        options: (sc) => sc.addIntegerOption((o) => o.setName('pagina').setDescription('página')),
+        toContent: (i) => join('!pbox', optInt(i, 'pagina'))
+      },
+      {
+        name: 'main',
+        description: 'Definir principal',
+        options: (sc) => sc.addStringOption((o) => o.setName('slot').setDescription('slot')),
+        toContent: (i) => join('!pmain', optStr(i, 'slot'))
+      },
+      { name: 'mon', description: 'Ver principal', toContent: () => '!pmon' },
+      { name: 'evolve', description: 'Evoluir principal', toContent: () => '!pevolve' },
+      { name: 'shop', description: 'Loja Pokémon', toContent: () => '!ploja' },
+      {
+        name: 'buy',
+        description: 'Comprar item',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('item').setDescription('id').setRequired(true)),
+        toContent: (i) => `!pbuy ${optStr(i, 'item')}`
+      },
+      { name: 'bag', description: 'Mochila', toContent: () => '!pbag' },
+      {
+        name: 'use',
+        description: 'Usar item',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('item').setDescription('id').setRequired(true)),
+        toContent: (i) => `!puse ${optStr(i, 'item')}`
+      },
+      {
+        name: 'battle',
+        description: 'Desafiar PvP',
+        options: (sc) =>
+          sc.addUserOption((o) => o.setName('user').setDescription('Oponente').setRequired(true)),
+        toContent: (i) => mention('pbattle', i)
+      },
+      { name: 'accept', description: 'Aceitar duelo', toContent: () => '!paccept' },
+      { name: 'deny', description: 'Recusar duelo', toContent: () => '!pdeny' },
+      {
+        name: 'move',
+        description: 'Golpe no PvP',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('golpe').setDescription('1–4').setRequired(true)
+          ),
+        toContent: (i) => `!pmove ${optStr(i, 'golpe')}`
+      },
+      { name: 'forfeit', description: 'Desistir PvP', toContent: () => '!pforfeit' },
+      { name: 'status', description: 'Status', toContent: () => '!pstatus' },
+      { name: 'daily', description: 'Daily Pokémon', toContent: () => '!pdaily' }
+    ],
+    handler: handlePokemonCommand
+  },
+
+  // ── /musica ──────────────────────────────────────────────
+  {
+    name: 'musica',
+    description: 'Música (Lavalink)',
+    subcommands: [
+      {
+        name: 'play',
+        description: 'Tocar',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('query').setDescription('Nome ou URL').setRequired(true)
+          ),
+        toContent: (i) => `!play ${optStr(i, 'query')}`
+      },
+      { name: 'skip', description: 'Pular', toContent: () => '!skip' },
+      { name: 'stop', description: 'Parar', toContent: () => '!stop' },
+      { name: 'queue', description: 'Fila', toContent: () => '!queue' },
+      { name: 'pause', description: 'Pausar', toContent: () => '!pause' },
+      { name: 'resume', description: 'Continuar', toContent: () => '!resume' },
+      { name: 'np', description: 'Tocando agora', toContent: () => '!np' },
+      {
+        name: 'volume',
+        description: 'Volume 0–100',
+        options: (sc) =>
+          sc.addIntegerOption((o) =>
+            o.setName('nivel').setDescription('0–100').setRequired(true)
+          ),
+        toContent: (i) => `!volume ${optInt(i, 'nivel')}`
+      }
+    ],
+    handler: handleMusicCommand
+  },
+
+  // ── /util ────────────────────────────────────────────────
+  {
+    name: 'util',
+    description: 'Utilidades',
+    subcommands: [
+      {
+        name: 'avatar',
+        description: 'Avatar',
+        options: (sc) => sc.addUserOption((o) => o.setName('user').setDescription('Membro')),
+        toContent: (i) => mention('avatar', i)
+      },
+      {
+        name: 'userinfo',
+        description: 'Info do membro',
+        options: (sc) => sc.addUserOption((o) => o.setName('user').setDescription('Membro')),
+        toContent: (i) => mention('userinfo', i)
+      },
+      { name: 'serverinfo', description: 'Info do servidor', toContent: () => '!serverinfo' },
+      {
+        name: 'say',
+        description: 'Fazer o bot falar',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('texto').setDescription('Mensagem').setRequired(true)
+          ),
+        toContent: (i) => `!say ${optStr(i, 'texto')}`
+      }
+    ],
+    handler: handleUtilityCommand
+  },
+
+  // ── /minigame ────────────────────────────────────────────
+  {
+    name: 'minigame',
+    description: 'Minigames',
+    subcommands: [
+      {
+        name: 'coinflip',
+        description: 'Cara ou coroa',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('texto').setDescription('ex: cara 50').setRequired(true)
+          ),
+        toContent: (i) => `!coinflip ${optStr(i, 'texto')}`
+      },
+      {
+        name: 'guess',
+        description: 'Adivinhar número',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('texto').setDescription('ex: 3 50').setRequired(true)
+          ),
+        toContent: (i) => `!guess ${optStr(i, 'texto')}`
+      },
+      { name: 'lista', description: 'Lista de minigames', toContent: () => '!minigames' }
+    ],
+    handler: handleMinigameCommand
+  },
+
+  // ── /casamento ───────────────────────────────────────────
+  {
+    name: 'casamento',
+    description: 'Casamento',
+    subcommands: [
+      {
+        name: 'pedir',
+        description: 'Pedir em casamento',
+        options: (sc) =>
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true)),
+        toContent: (i) => mention('casar', i)
+      },
+      { name: 'aceitar', description: 'Aceitar pedido', toContent: () => '!aceitarcasamento' },
+      { name: 'recusar', description: 'Recusar pedido', toContent: () => '!recusarcasamento' },
+      { name: 'divorciar', description: 'Divórcio', toContent: () => '!divorciar' },
+      {
+        name: 'ver',
+        description: 'Ver casamento',
+        options: (sc) => sc.addUserOption((o) => o.setName('user').setDescription('Membro')),
+        toContent: (i) => mention('casamento', i)
+      }
+    ],
+    handler: handleMarriageCommand
+  },
+
+  // ── /ticket ──────────────────────────────────────────────
   {
     name: 'ticket',
-    description: 'Abrir ticket de suporte',
-    build: [str('motivo', 'motivo')],
-    toContent: (i) => `!ticket ${optStr(i, 'motivo')}`.trim(),
+    description: 'Tickets de suporte',
+    subcommands: [
+      {
+        name: 'abrir',
+        description: 'Abrir ticket',
+        options: (sc) => sc.addStringOption((o) => o.setName('motivo').setDescription('motivo')),
+        toContent: (i) => join('!ticket', optStr(i, 'motivo'))
+      },
+      {
+        name: 'fechar',
+        description: 'Fechar (no canal do ticket)',
+        options: (sc) => sc.addStringOption((o) => o.setName('motivo').setDescription('motivo')),
+        toContent: (i) => join('!fechar', optStr(i, 'motivo'))
+      },
+      { name: 'lista', description: 'Listar abertos', toContent: () => '!tickets' }
+    ],
     handler: handleTicketCommand
-  },
-  {
-    name: 'fechar',
-    description: 'Fechar ticket (no canal do ticket)',
-    build: [str('motivo', 'motivo')],
-    toContent: (i) => `!fechar ${optStr(i, 'motivo')}`.trim(),
-    handler: handleTicketCommand
-  },
-  { name: 'tickets', description: 'Listar tickets abertos', toContent: () => '!tickets', handler: handleTicketCommand },
-  {
-    name: 'config',
-    description: 'Painel de config (staff)',
-    build: [str('texto', 'ex: welcome on')],
-    toContent: (i) => `!config ${optStr(i, 'texto')}`.trim(),
-    handler: handleConfigCommand,
-    permission: PermissionFlagsBits.ManageGuild
-  },
-  {
-    name: 'limpeza',
-    description: 'Limpeza de canal / efeitos (staff)',
-    build: [str('texto', 'ex: 20 | bot 50 | efeitos')],
-    toContent: (i) => `!limpeza ${optStr(i, 'texto')}`.trim(),
-    handler: handleCleanupCommand,
-    permission: PermissionFlagsBits.ManageMessages
-  },
-  {
-    name: 'starboard',
-    description: 'Config starboard (staff)',
-    build: [str('texto', 'ex: canal #x | min 3')],
-    toContent: (i) => `!starboard ${optStr(i, 'texto')}`.trim(),
-    handler: handleStarboardCommand,
-    permission: PermissionFlagsBits.ManageGuild
-  },
-  {
-    name: 'modlogs',
-    description: 'Logs de moderação',
-    build: [str('texto', 'args')],
-    toContent: (i) => `!modlogs ${optStr(i, 'texto')}`.trim(),
-    handler: handleModLogCommand,
-    permission: PermissionFlagsBits.ModerateMembers
   },
 
-  // ── Moderação ────────────────────────────────────────────
-  ...modEntry('ban', 'Banir membro', true),
-  ...modEntry('unban', 'Desbanir (id)', false, true),
-  ...modEntry('kick', 'Expulsar membro', true),
-  ...modEntry('timeout', 'Timeout em membro', true),
-  ...modEntry('untimeout', 'Remover timeout', true),
-  ...modEntry('warn', 'Advertir membro', true),
+  // ── /mod ─────────────────────────────────────────────────
   {
-    name: 'warnings',
-    description: 'Ver advertências',
-    build: [user('user', 'Membro')],
-    toContent: (i) => mentionContent('warnings', i),
-    handler: handleModerationCommand,
-    permission: PermissionFlagsBits.ModerateMembers
+    name: 'mod',
+    description: 'Moderação',
+    permission: PermissionFlagsBits.ModerateMembers,
+    subcommands: [
+      {
+        name: 'ban',
+        description: 'Banir',
+        options: (sc) => {
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true));
+          sc.addStringOption((o) => o.setName('motivo').setDescription('Motivo'));
+          return sc;
+        },
+        toContent: (i) => join(mention('ban', i), optStr(i, 'motivo'))
+      },
+      {
+        name: 'unban',
+        description: 'Desbanir por ID',
+        options: (sc) => {
+          sc.addStringOption((o) => o.setName('id').setDescription('ID').setRequired(true));
+          sc.addStringOption((o) => o.setName('motivo').setDescription('Motivo'));
+          return sc;
+        },
+        toContent: (i) => join('!unban', optStr(i, 'id'), optStr(i, 'motivo'))
+      },
+      {
+        name: 'kick',
+        description: 'Expulsar',
+        options: (sc) => {
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true));
+          sc.addStringOption((o) => o.setName('motivo').setDescription('Motivo'));
+          return sc;
+        },
+        toContent: (i) => join(mention('kick', i), optStr(i, 'motivo'))
+      },
+      {
+        name: 'timeout',
+        description: 'Timeout',
+        options: (sc) => {
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true));
+          sc.addStringOption((o) => o.setName('motivo').setDescription('duração/motivo'));
+          return sc;
+        },
+        toContent: (i) => join(mention('timeout', i), optStr(i, 'motivo'))
+      },
+      {
+        name: 'untimeout',
+        description: 'Remover timeout',
+        options: (sc) =>
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true)),
+        toContent: (i) => mention('untimeout', i)
+      },
+      {
+        name: 'warn',
+        description: 'Advertir',
+        options: (sc) => {
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true));
+          sc.addStringOption((o) => o.setName('motivo').setDescription('Motivo'));
+          return sc;
+        },
+        toContent: (i) => join(mention('warn', i), optStr(i, 'motivo'))
+      },
+      {
+        name: 'warnings',
+        description: 'Ver warns',
+        options: (sc) => sc.addUserOption((o) => o.setName('user').setDescription('Membro')),
+        toContent: (i) => mention('warnings', i)
+      },
+      {
+        name: 'clearwarns',
+        description: 'Limpar warns',
+        options: (sc) =>
+          sc.addUserOption((o) => o.setName('user').setDescription('Membro').setRequired(true)),
+        toContent: (i) => mention('clearwarns', i)
+      },
+      {
+        name: 'clear',
+        description: 'Apagar mensagens',
+        options: (sc) =>
+          sc.addIntegerOption((o) =>
+            o.setName('quantidade').setDescription('1–100').setRequired(true)
+          ),
+        toContent: (i) => `!clear ${optInt(i, 'quantidade')}`
+      },
+      {
+        name: 'slowmode',
+        description: 'Slowmode (seg)',
+        options: (sc) =>
+          sc.addIntegerOption((o) =>
+            o.setName('segundos').setDescription('0–21600').setRequired(true)
+          ),
+        toContent: (i) => `!slowmode ${optInt(i, 'segundos')}`
+      },
+      { name: 'lock', description: 'Trancar canal', toContent: () => '!lock' },
+      { name: 'unlock', description: 'Destrancar canal', toContent: () => '!unlock' }
+    ],
+    handler: handleModerationCommand
   },
+
+  // ── /staff ───────────────────────────────────────────────
   {
-    name: 'clearwarns',
-    description: 'Limpar advertências',
-    build: [user('user', 'Membro', true)],
-    toContent: (i) => mentionContent('clearwarns', i),
-    handler: handleModerationCommand,
-    permission: PermissionFlagsBits.ModerateMembers
-  },
-  {
-    name: 'clear',
-    description: 'Apagar mensagens do canal',
-    build: [int('quantidade', '1–100', true)],
-    toContent: (i) => `!clear ${optInt(i, 'quantidade')}`,
-    handler: handleModerationCommand,
-    permission: PermissionFlagsBits.ManageMessages
-  },
-  {
-    name: 'slowmode',
-    description: 'Slowmode do canal (segundos)',
-    build: [int('segundos', '0–21600', true)],
-    toContent: (i) => `!slowmode ${optInt(i, 'segundos')}`,
-    handler: handleModerationCommand,
-    permission: PermissionFlagsBits.ManageChannels
-  },
-  {
-    name: 'lock',
-    description: 'Trancar canal',
-    toContent: () => '!lock',
-    handler: handleModerationCommand,
-    permission: PermissionFlagsBits.ManageChannels
-  },
-  {
-    name: 'unlock',
-    description: 'Destrancar canal',
-    toContent: () => '!unlock',
-    handler: handleModerationCommand,
-    permission: PermissionFlagsBits.ManageChannels
+    name: 'staff',
+    description: 'Ferramentas de staff',
+    permission: PermissionFlagsBits.ManageGuild,
+    subcommands: [
+      {
+        name: 'config',
+        description: 'Config do servidor',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('texto').setDescription('ex: ranking #canal')),
+        toContent: (i) => join('!config', optStr(i, 'texto'))
+      },
+      {
+        name: 'limpeza',
+        description: 'Limpeza de canal/efeitos',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('texto').setDescription('20 | bot 50 | efeitos')),
+        toContent: (i) => join('!limpeza', optStr(i, 'texto'))
+      },
+      {
+        name: 'starboard',
+        description: 'Config starboard',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('texto').setDescription('canal | min 3')),
+        toContent: (i) => join('!starboard', optStr(i, 'texto'))
+      },
+      {
+        name: 'modlogs',
+        description: 'Logs de moderação',
+        options: (sc) => sc.addStringOption((o) => o.setName('texto').setDescription('args')),
+        toContent: (i) => join('!modlogs', optStr(i, 'texto'))
+      },
+      {
+        name: 'metrics',
+        description: 'Métricas do bot',
+        options: (sc) =>
+          sc.addStringOption((o) => o.setName('acao').setDescription('vazio ou errors')),
+        toContent: (i) => join('!metrics', optStr(i, 'acao'))
+      },
+      {
+        name: 'alerta',
+        description: 'Canal de alerta bot/Lavalink',
+        options: (sc) =>
+          sc.addStringOption((o) =>
+            o.setName('texto').setDescription('#canal | off').setRequired(true)
+          ),
+        toContent: (i) => `!config alerta ${optStr(i, 'texto')}`
+      }
+    ],
+    // metrics has ManageGuild in handler; config routes through config for alerta
+    handler: async (msg, data) => {
+      const cmd = msg.content.trim().split(/\s+/)[0].toLowerCase();
+      if (cmd === '!metrics') return handleMetricsCommand(msg, data);
+      if (cmd === '!limpeza' || cmd === '!cleanup' || cmd === '!clean') {
+        return handleCleanupCommand(msg, data);
+      }
+      if (cmd === '!starboard' || cmd === '!estrelas') return handleStarboardCommand(msg, data);
+      if (cmd === '!modlogs') return handleModLogCommand(msg, data);
+      return handleConfigCommand(msg, data);
+    }
   }
 ];
-
-function modEntry(name, description, needsUser, idAsText = false) {
-  const build = [];
-  if (needsUser) build.push(user('user', 'Membro', true));
-  if (idAsText) build.push(str('id', 'ID do usuário', true));
-  build.push(str('motivo', 'Motivo / args extras'));
-  return [
-    {
-      name,
-      description,
-      build,
-      toContent: (i) => {
-        const parts = [`!${name}`];
-        if (idAsText) parts.push(optStr(i, 'id'));
-        else {
-          const u = i.options.getUser('user');
-          if (u) parts.push(`<@${u.id}>`);
-        }
-        const m = optStr(i, 'motivo');
-        if (m) parts.push(m);
-        return parts.join(' ');
-      },
-      handler: handleModerationCommand,
-      permission: PermissionFlagsBits.ModerateMembers
-    }
-  ];
-}
 
 function buildCatalogJSON() {
   const out = [];
   const names = new Set();
   for (const e of ENTRIES) {
     if (names.has(e.name)) {
-      console.warn(`[slash-catalog] duplicado ignorado: ${e.name}`);
+      console.warn(`[slash-catalog] duplicado: ${e.name}`);
       continue;
     }
     names.add(e.name);
-    let b = new SlashCommandBuilder()
-      .setName(e.name)
-      .setDescription((e.description || e.name).slice(0, 100));
-    if (e.permission) {
-      b = b.setDefaultMemberPermissions(e.permission);
-    }
-    if (Array.isArray(e.build)) {
-      for (const fn of e.build) fn(b);
-    }
-    out.push(b.toJSON());
+    out.push(buildOne(e));
   }
   return out;
 }
 
 const byName = new Map(ENTRIES.map((e) => [e.name, e]));
 
-/**
- * @returns {Promise<boolean>}
- */
+function resolveToContent(entry, interaction) {
+  if (entry.subcommands?.length) {
+    const subName = interaction.options.getSubcommand(false);
+    const sub = entry.subcommands.find((s) => s.name === subName);
+    if (!sub) return `!${entry.name}`;
+    return sub.toContent(interaction);
+  }
+  return entry.toContent(interaction);
+}
+
 async function handleCatalogSlash(interaction, data) {
   if (!interaction.isChatInputCommand()) return false;
   const entry = byName.get(interaction.commandName);
   if (!entry) return false;
 
   const t0 = Date.now();
-  const label = `/${entry.name}`;
+  const sub = interaction.options.getSubcommand(false);
+  const label = sub ? `/${entry.name} ${sub}` : `/${entry.name}`;
+
   try {
-    // evita "aplicativo não respondeu" em handlers lentos (música, padaria png…)
     if (!interaction.deferred && !interaction.replied) {
       await interaction.deferReply();
     }
 
-    const content = entry.toContent(interaction);
+    const content = resolveToContent(entry, interaction);
     const msg = messageFromInteraction(interaction, content);
     const result = await entry.handler(msg, data);
 
     if (result === false) {
-      await interaction.editReply({
-        content: `Não consegui executar \`/${entry.name}\`. Tente: \`${content}\``
-      }).catch(() => {});
+      await interaction
+        .editReply({
+          content: `Não consegui executar \`${label}\`. Tente: \`${content}\``
+        })
+        .catch(() => {});
       trackCommand(label, {
         guildId: interaction.guildId,
         userId: interaction.user.id,
@@ -614,13 +824,13 @@ async function handleCatalogSlash(interaction, data) {
       return true;
     }
 
-    // handler async que ainda não respondeu
     if (interaction.deferred && !interaction.replied) {
-      // editReply ainda não foi chamado (bridge marca replied só no reply da API;
-      // deferred+editReply seta replied). Se ficou só deferred, manda ok genérico.
       try {
         const fetched = await interaction.fetchReply().catch(() => null);
-        if (!fetched || (fetched.content === '' && !fetched.embeds?.length && !fetched.attachments?.size)) {
+        if (
+          !fetched ||
+          (fetched.content === '' && !fetched.embeds?.length && !fetched.attachments?.size)
+        ) {
           await interaction.editReply({ content: '✅ Pronto.' }).catch(() => {});
         }
       } catch {
@@ -643,9 +853,11 @@ async function handleCatalogSlash(interaction, data) {
     });
     try {
       if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ content: '⚠️ Erro ao executar o comando.' }).catch(() =>
-          interaction.followUp({ content: '⚠️ Erro ao executar o comando.', ephemeral: true })
-        );
+        await interaction
+          .editReply({ content: '⚠️ Erro ao executar o comando.' })
+          .catch(() =>
+            interaction.followUp({ content: '⚠️ Erro ao executar o comando.', ephemeral: true })
+          );
       } else {
         await interaction.reply({ content: '⚠️ Erro ao executar o comando.', ephemeral: true });
       }

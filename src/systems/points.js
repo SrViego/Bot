@@ -107,9 +107,18 @@ function claimDaily(message, data) {
     fields.push({ name: '🏪 Boost da loja', value: boostNote, inline: false });
   }
 
+  let loreLine = '';
+  try {
+    const { QUOTES } = require('./lore');
+    const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    loreLine = `\n*“${q.q}”* — ${q.t}`;
+  } catch {
+    /* ignore */
+  }
+
   message.reply({
     title: '🎁 Daily resgatado!',
-    description: `${message.author} abriu o baú diário.`,
+    description: `${message.author} abriu o baú diário.${loreLine}`,
     thumbnail: message.author.displayAvatarURL({ size: 128 }),
     fields
   });

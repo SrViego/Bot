@@ -5,66 +5,64 @@ Prefixo `!` e slash `/` continuam os dois; a lógica fica única.
 
 ---
 
-## Sprint 1 — Chegada e 1ª semana ✅ (em andamento no código)
+## Sprint 1 — Chegada e 1ª semana ✅
 
-**Meta:** o membro novo sabe o que fazer em 2 minutos e sente progresso.
-
-| Item | Status | Notas |
-|------|--------|--------|
-| `!inicio` / `/inicio` com checklist | ✅ | Progresso lido do estado real (daily, padaria, poke…) |
-| Recompensa ao completar o trilho | ✅ | Pontos + 🪙 padaria (1× por conta no servidor) |
-| Welcome aponta pro trilho | ✅ | Embed de boas-vindas + `!inicio` |
-| Guia página 0 / menção no `!ajuda` | ✅ | Entrada no help geral |
-
-**Critério de pronto:** novo membro usa `!inicio` e consegue seguir os passos sem perguntar no chat.
+| Item | Status |
+|------|--------|
+| `!inicio` / `/inicio` checklist | ✅ |
+| Recompensa ao completar | ✅ |
+| Welcome + ajuda | ✅ |
 
 ---
 
-## Sprint 2 — Carros-chefe (padaria + poke + economia) ✅
+## Sprint 2 — Carros-chefe ✅
 
-**Meta:** os dois jogos grandes e a economia se sentem “vivos” e balanceados.
-
-| Item | Status | Notas |
-|------|--------|--------|
-| Padaria: flavor Hallownest nos embeds | ✅ | Frases ao assar/servir |
-| Pokémon: onboarding `!pstart` / captura | ✅ | Próximos passos no embed |
-| Sink leve de pontos | ✅ | `!ofrenda` / `/ofrenda` |
-| Ranking semanal automático | ✅ | `!config ranking #canal` · `!ranking` |
-| Documentar economia | ✅ | `!economia` / `/economia` |
-
-**Critério de pronto:** um jogador casual volta no dia seguinte por padaria ou poke, não só daily.
+| Item | Status |
+|------|--------|
+| Flavor padaria Hallownest | ✅ |
+| Poke onboarding / captura guiada | ✅ |
+| `!ofrenda` + `!economia` | ✅ |
+| Ranking semanal | ✅ |
 
 ---
 
-## Sprint 3 — Polimento e ops
+## Sprint 3 — Polimento e ops ✅
 
-**Meta:** menos surpresa em produção e bot com cara de Hallownest.
+| Item | Status | Notas |
+|------|--------|--------|
+| Slash profundos (menus) | ✅ | `/padaria` `/poke` `/loja` `/musica` `/mod` `/economia` `/staff`… |
+| Alertas staff Lavalink | ✅ | `!config alerta #canal` |
+| Smoke tests | ✅ | `npm test` / `node scripts/smoke-test.js` |
+| Backup restore doc | ✅ | [`BACKUP-RESTORE.md`](./BACKUP-RESTORE.md) |
+| Lore no daily / level-up | ✅ | Citação aleatória |
 
-| Item | Prioridade | Notas |
-|------|------------|--------|
-| Slash profundos (padaria/loja/poke menus) | Alta | Menos `texto=` genérico |
-| Alertas staff (bot/Lavalink down) | Média | Canal staff + `!metrics` |
-| Testes smoke (daily, assar, saveUser) | Média | `node --test` ou script simples |
-| Backup restore documentado | Baixa | Já existe backup; falta “como restaurar” |
-| Lore nos level-ups / daily | Baixa | Uma linha de citação aleatória |
+### Mapa slash (raiz)
 
-**Critério de pronto:** staff resolve “bot sumiu / slash bugou” com checklist; identidade visual/texto mais Hallownest.
+| Comando | Subcomandos (resumo) |
+|---------|----------------------|
+| `/inicio` | — |
+| `/daily` `/perfil` `/quest` `/ranking` `/evento` | — |
+| `/pontos` | ver, rank |
+| `/xp` | ver, rank |
+| `/rep` | dar, rank |
+| `/economia` | guia, cambio, ofrenda |
+| `/loja` | ver, item, comprar, vender, inventário… |
+| `/padaria` | status, assar, servir, repetir, historico… |
+| `/poke` | start, wild, catch, team, battle… |
+| `/musica` | play, skip, queue, volume… |
+| `/mod` | ban, kick, clear… |
+| `/staff` | config, metrics, limpeza, alerta… |
+| `/util` `/minigame` `/casamento` `/ticket` | … |
+| `/ping` `/lore` `/ajuda` | registry |
+
+Prefixo `!assar`, `!play`, etc. **continua igual**.
 
 ---
 
 ## Fora de escopo (por enquanto)
 
-- Novo jogo grande (além de padaria + Pokémon)
-- Gacha / lootboxes
-- IA de chat genérica
-- Remover o prefixo `!` (manter dual)
+- Novo jogo grande  
+- Gacha  
+- Remover o prefixo `!`
 
----
-
-## Como usar este doc
-
-1. Terminar Sprint 1 no servidor (testar `!inicio` com conta nova se possível).  
-2. No Sprint 2, pegar **no máximo 2** itens por vez.  
-3. Revisar métricas (`!metrics`) depois de cada sprint.
-
-Última atualização: implementação inicial do Sprint 1 no código.
+Última atualização: Sprint 3 + reorg slash.

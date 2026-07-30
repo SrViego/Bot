@@ -3,12 +3,23 @@
  * Taxa alta de propósito (sink + anti-exploit).
  */
 
-const { getUserData, saveData } = require('./database');
+const { getUserData, saveData, saveUser } = require('./database');
 const { ensureBakery } = require('./bakery');
-const { theme } = require('./theme');
+const { theme, pickRandom } = require('./theme');
 
 /** Taxa: você perde TAX da quantia convertida (fica 1-TAX). Sink forte. */
 const TAX = 0.45;
+
+const OFRENDA_MIN = 10;
+const OFRENDA_MAX = 5000;
+
+const OFRENDA_FLAVOR = [
+  'A oferenda some na escuridão do Abismo — Hallownest lembra.',
+  'O Elderbug acena: “generoso… como nos velhos tempos”.',
+  'Sly conta as moedas e sorri. O hall fica um pouco mais rico em espírito.',
+  'A Radiância não recebe isto — mas o povo de Dirtmouth agradece.',
+  'Geo imaginário cai no poço. Seu nome ecoa no salão.'
+];
 
 /**
  * rates: quantas unidades de "to" por 1 de "from" (antes da taxa).
@@ -68,6 +79,17 @@ function normalizePair(a, b) {
 function handleExchangeCommand(message, data) {
   const args = message.content.trim().split(/\s+/);
   const command = args[0].toLowerCase();
+
+  if (['!economia', '!economy', '!moedas'].includes(command)) {
+    showEconomyHelp(message, data);
+    return true;
+  }
+
+  if (['!ofrenda', '!doar', '!offer', '!offering'].includes(command)) {
+    handleOfrenda(message, args, data);
+    return true;
+  }
+
   if (!['!cambio', '!câmbio', '!exchange', '!trocar', '!converter'].includes(command)) {
     return false;
   }
@@ -87,6 +109,8 @@ function handleExchangeCommand(message, data) {
         '',
         'Ex: `!cambio pontos padaria 100`',
         'Ex: `!cambio padaria poke 50`',
+        '',
+        '`!economia` — guia completo · `!ofrenda <pts>` — sink de pontos',
         '',
         `Saldo: **${userData.points}** pts · **${userData.bakery.coins}** padaria · **${userData.pokemon.coins}** poke`
       ].join('\n'),
@@ -134,7 +158,7 @@ function handleExchangeCommand(message, data) {
 
   setBal(userData, pair.from, have - amount);
   setBal(userData, pair.to, getBal(userData, pair.to) + gained);
-  saveData(data);
+  saveUser(data, message.guild.id, message.author.id);
 
   message.reply({
     title: '💱 Câmbio feito',
@@ -149,7 +173,102 @@ function handleExchangeCommand(message, data) {
   return true;
 }
 
+function showEconomyHelp(message, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  ensureBakery(userData);
+  ensurePoke(userData);
+
+  message.reply({
+    title: '💰 Economia Morgana',
+    description: 'Três moedas **separadas**. Farmar no sistema nativo costuma valer mais que câmbio.',
+    fields: [
+      {
+        name: '🪙 Moedas',
+        value: [
+          '**Pontos** — daily, quests, minigames, chat (indireto via XP/loja)',
+          '**Padaria** — assar/servir no canal da padaria',
+          '**Poke** — captura, daily poke, loja Pokémon'
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: `💱 Câmbio (taxa ${Math.round(TAX * 100)}%)`,
+        value: [
+          '`!cambio <de> <para> <qtd>`',
+          'Parte da quantia **queima** de propósito (anti-exploit + sink).',
+          'Ex: `!cambio pontos padaria 100`'
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: '🔥 Sinks (gastar / queimar)',
+        value: [
+          '`!loja` · `!cosmetico` · upgrades da padaria · `!ploja`',
+          '`!ofrenda <pts>` — doa pontos ao hall (some do seu saldo)',
+          'Apostas / minigames com risco'
+        ].join('\n'),
+        inline: false
+      },
+      {
+        name: '📊 Seu saldo',
+        value: `**${userData.points || 0}** pts · **${userData.bakery?.coins || 0}** padaria · **${userData.pokemon?.coins || 0}** poke`,
+        inline: false
+      }
+    ],
+    color: theme.color
+  });
+}
+
+function handleOfrenda(message, args, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const raw = args[1];
+  let amount = parseInt(raw, 10);
+  if (raw?.toLowerCase() === 'all' || raw?.toLowerCase() === 'tudo') {
+    amount = userData.points || 0;
+  }
+  if (!Number.isInteger(amount) || amount < OFRENDA_MIN) {
+    message.reply({
+      title: '🕯️ Oferenda',
+      description: [
+        `Doe pontos ao hall (somem do seu saldo — sink).`,
+        `Uso: \`!ofrenda <${OFRENDA_MIN}–${OFRENDA_MAX}>\` ou \`!ofrenda tudo\``,
+        `Você tem **${userData.points || 0}** pts.`
+      ].join('\n'),
+      color: theme.color
+    });
+    return;
+  }
+  amount = Math.min(OFRENDA_MAX, amount);
+  if ((userData.points || 0) < amount) {
+    message.reply({
+      title: '🕯️ Saldo insuficiente',
+      description: `Precisa de **${amount}** pts · tem **${userData.points || 0}**.`,
+      color: theme.colorError
+    });
+    return;
+  }
+
+  userData.points -= amount;
+  if (!userData.stats || typeof userData.stats !== 'object') userData.stats = {};
+  userData.stats.offeredPoints = (userData.stats.offeredPoints || 0) + amount;
+  saveUser(data, message.guild.id, message.author.id);
+
+  message.reply({
+    title: '🕯️ Oferenda aceita',
+    description: [
+      `Você doou **${amount}** pontos ao hall.`,
+      `*${pickRandom(OFRENDA_FLAVOR)}*`,
+      '',
+      `Total doado (histórico): **${userData.stats.offeredPoints}** pts`,
+      `Saldo agora: **${userData.points}** pts`
+    ].join('\n'),
+    color: theme.color
+  });
+}
+
 module.exports = {
   handleExchangeCommand,
+  showEconomyHelp,
+  handleOfrenda,
   TAX
 };

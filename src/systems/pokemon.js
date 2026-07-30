@@ -390,7 +390,17 @@ function startAdventure(message, args, data) {
 
   message.reply({
     title: `✨ ${species.name} se juntou a você!`,
-    description: `${message.author} começou a jornada com **${species.name}** Nv.5!`,
+    description: [
+      `${message.author} começou a jornada com **${species.name}** Nv.5!`,
+      '',
+      '**Próximos passos**',
+      '1. `!pwild` — encontro selvagem',
+      '2. `!pcatch` — capturar (usa Poké Ball da mochila)',
+      '3. `!pteam` · `!pmon` — ver time e o principal ⭐',
+      '4. `!ploja` · `!pdaily` — gastar e resgatar 🪙',
+      '',
+      '_Ajuda completa: `!phelp` · Duelo: `!pbattle @user`_'
+    ].join('\n'),
     thumbnail: spriteUrl(species.id),
     fields: [
       { name: 'Tipos', value: formatTypes(species.types), inline: true },
@@ -557,7 +567,12 @@ function catchWild(message, args, data) {
       `${message.author} capturou **${mon.name}** Nv.${mon.level}!`,
       `Com: ${ball.emoji} **${ball.name}**`,
       `Guardado em: **${placed}**`,
-      `+**${coins}** 🪙${raidMult > 1 ? ' ⚔️ raid' : ''}${xpNote}`
+      `+**${coins}** 🪙${raidMult > 1 ? ' ⚔️ raid' : ''}${xpNote}`,
+      '',
+      placed === 'caixa'
+        ? '➡️ Caixa: `!padd #` puxa pro time · `!pmain` define o principal'
+        : '➡️ `!pmain` se quiser este como líder · `!pwild` de novo',
+      '`!pbag` / `!pbuy pokeball` se faltar ball'
     ].join('\n'),
     thumbnail: spriteUrl(mon.speciesId),
     color: 0xe7644d

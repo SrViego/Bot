@@ -20,17 +20,17 @@ Prefixo `!` e slash `/` continuam os dois; a lógica fica única.
 
 ---
 
-## Sprint 2 — Carros-chefe (padaria + poke + economia)
+## Sprint 2 — Carros-chefe (padaria + poke + economia) ✅
 
 **Meta:** os dois jogos grandes e a economia se sentem “vivos” e balanceados.
 
-| Item | Prioridade | Notas |
-|------|------------|--------|
-| Padaria: flavor Hallownest nos embeds | Alta | Frases ao assar/servir (sem mudar economia) |
-| Pokémon: onboarding `!pstart` mais guiado | Alta | Dica pós-captura, próximo passo |
-| Sink leve de pontos | Média | Cosmético barato ou meta semanal de guild |
-| Ranking semanal automático (canal) | Média | Top pontos / padaria / poke — staff configura canal |
-| Documentar taxa de câmbio e sinks | Baixa | README ou `!economia` |
+| Item | Status | Notas |
+|------|--------|--------|
+| Padaria: flavor Hallownest nos embeds | ✅ | Frases ao assar/servir |
+| Pokémon: onboarding `!pstart` / captura | ✅ | Próximos passos no embed |
+| Sink leve de pontos | ✅ | `!ofrenda` / `/ofrenda` |
+| Ranking semanal automático | ✅ | `!config ranking #canal` · `!ranking` |
+| Documentar economia | ✅ | `!economia` / `/economia` |
 
 **Critério de pronto:** um jogador casual volta no dia seguinte por padaria ou poke, não só daily.
 

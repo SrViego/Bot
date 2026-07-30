@@ -21,7 +21,27 @@ const { getUserData, getGuildData, saveData, saveUser } = require('./database');
 function persistAuthor(data, message) {
   saveUser(data, message.guild.id, message.author.id);
 }
-const { theme, progressBar } = require('./theme');
+const { theme, progressBar, pickRandom } = require('./theme');
+
+const FLAVOR_BAKE = [
+  'O forno de Dirtmouth crepita… Elderbug aprova o cheiro.',
+  'Iselda diria: “mais um lote pra prateleira”.',
+  'Cornifer anota a receita no mapa — “fascinante!”',
+  'O Nailsmith para o martelo só pra sentir o aroma.',
+  'Cloth cheira o ar: “cheiro de vitória… e de manteiga”.',
+  'Sly calcula o lucro antes mesmo de sair do forno.',
+  'A White Lady prefere baguete — mas isto também serve.',
+  'Quirrel: “conhecimento se compartilha… e pão também.”'
+];
+
+const FLAVOR_SERVE = [
+  'Clientes de Dirtmouth formam fila. Bom serviço!',
+  'Um viajante do Reino paga em Geo… metaforicamente em 🪙.',
+  'O salão enche de conversa e migalhas felizes.',
+  'Alguém murmura: “melhor que o pão da Cidade das Lágrimas”.',
+  'O negócio flui — Hallownest come bem hoje.',
+  'Um zumbido distante aprova. Ou é só o forno.'
+];
 const { renderBakeryPng } = require('./bakery-render');
 const { trackQuest } = require('./quests');
 const {
@@ -631,6 +651,7 @@ function beginBake(message, data, recipe, requestedQty) {
     title: `${recipe.emoji} Assando…`,
     description: [
       multi,
+      `*${pickRandom(FLAVOR_BAKE)}*`,
       `Pronto <t:${Math.floor(readyAt / 1000)}:R> · \`${formatDuration(cookMs)}\`${speedNote}`,
       `Fornos: **${b.cooking.length}/${b.ovens}** em uso (${free - count} livre(s))`,
       b.notifyReady ? '🔔 Aviso por DM ativado (`!fornonotify`)' : '',
@@ -925,7 +946,11 @@ function serveReady(message, data) {
 
   message.reply({
     title: '🍽️ Servido!',
-    description: lines.join('\n') || 'Itens servidos.',
+    description: [
+      `*${pickRandom(FLAVOR_SERVE)}*`,
+      '',
+      lines.join('\n') || 'Itens servidos.'
+    ].join('\n'),
     fields,
     color: theme.color
   });

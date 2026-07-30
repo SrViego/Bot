@@ -29,7 +29,9 @@ const defaultGuildConfig = {
   starboardChannelId: null,
   starboardEmoji: '⭐',
   starboardMin: 3,
-  events: null
+  events: null,
+  rankingChannelId: null,
+  lastWeeklyRankKey: null
 };
 
 const defaultData = {

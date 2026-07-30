@@ -34,6 +34,7 @@ const { handleTicketCommand } = require('../systems/tickets');
 const { handleStarboardCommand } = require('../systems/starboard');
 const { handleModLogCommand } = require('../systems/modlogs');
 const { handleOnboardingCommand } = require('../systems/onboarding');
+const { handleRankingCommand } = require('../systems/weekly-rank');
 
 const str = (name, desc, required = false) => (b) =>
   b.addStringOption((o) => o.setName(name).setDescription(desc).setRequired(required));
@@ -139,10 +140,19 @@ const ENTRIES = [
   { name: 'efeitos', description: 'Buffs ativos', toContent: () => '!efeitos', handler: handleShopCommand },
   {
     name: 'cambio',
-    description: 'Câmbio entre moedas (pontos/padaria/poke)',
-    build: [str('texto', 'ex: pontos padaria 100', true)],
-    toContent: (i) => `!cambio ${optStr(i, 'texto')}`,
+    description: 'Câmbio (ou vazio = ajuda). Prefixo: !economia !ofrenda',
+    build: [str('texto', 'ex: pontos padaria 100 — vazio mostra ajuda')],
+    toContent: (i) => {
+      const t = optStr(i, 'texto');
+      return t ? `!cambio ${t}` : '!cambio';
+    },
     handler: handleExchangeCommand
+  },
+  {
+    name: 'ranking',
+    description: 'Top pontos / padaria / poke do servidor',
+    toContent: () => '!ranking',
+    handler: handleRankingCommand
   },
   {
     name: 'apostar',

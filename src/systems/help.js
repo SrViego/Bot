@@ -40,8 +40,9 @@ const HELP_PAGES = [
         value: '`!pontos` `!daily` `!rankpontos` `!efeitos`'
       },
       {
-        name: '💱 Câmbio (taxa 35%)',
-        value: '`!cambio pontos|padaria|poke <de> <para> <qtd>`\nEx: `!cambio pontos padaria 100`'
+        name: '💱 Câmbio & sinks',
+        value:
+          '`!economia` — guia · `!cambio <de> <para> <qtd>` (taxa **45%**)\n`!ofrenda <pts>` — doa pontos · `!ranking` — tops'
       },
       {
         name: '🏪 Loja & cosméticos',

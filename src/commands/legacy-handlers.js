@@ -22,6 +22,7 @@ const { handleBetCommand } = require('../systems/bets');
 const { handleAchievementsCommand } = require('../systems/achievements');
 const { handleServerStatsCommand } = require('../systems/server-stats');
 const { handleOnboardingCommand } = require('../systems/onboarding');
+const { handleRankingCommand } = require('../systems/weekly-rank');
 
 /** @param {{ name: string, aliases?: string[], description: string, category?: string, permission?: bigint, handler: Function, data?: boolean }} opts */
 function legacy(opts) {
@@ -121,10 +122,30 @@ legacy({
 
 legacy({
   name: 'cambio',
-  aliases: ['câmbio', 'exchange', 'trocar', 'converter'],
-  description: 'Câmbio entre moedas',
+  aliases: [
+    'câmbio',
+    'exchange',
+    'trocar',
+    'converter',
+    'economia',
+    'economy',
+    'moedas',
+    'ofrenda',
+    'doar',
+    'offer',
+    'offering'
+  ],
+  description: 'Câmbio, economia e oferenda',
   category: 'economy',
   handler: handleExchangeCommand
+});
+
+legacy({
+  name: 'ranking',
+  aliases: ['rankings', 'top', 'topsemanal'],
+  description: 'Ranking do servidor',
+  category: 'social',
+  handler: handleRankingCommand
 });
 
 legacy({

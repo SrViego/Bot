@@ -34,6 +34,8 @@ Segurança: [`docs/SECURITY-CHECKLIST.md`](docs/SECURITY-CHECKLIST.md) · `./scr
 Métricas (staff): `!metrics` · `!metrics errors`  
 DB: `DATA_BACKEND=json|sqlite` · migrar: `node scripts/migrate-json-to-sqlite.js`  
 Chegada: `!inicio` / `/inicio` — trilho da 1ª semana  
+Economia: `!economia` · `!ofrenda` · `!ranking` · `!config ranking #canal`  
+
 Comandos (registry): `src/commands/` — `!ping` `!lore` `!ajuda` `!play`…  
 SQLite: `saveUser` / `mutateUser` / `saveDataSoon` (semana 4)
 

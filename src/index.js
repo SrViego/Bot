@@ -27,6 +27,7 @@ const { handleBakeryCommand, processOvenNotifications } = require('./systems/bak
 const { handleTicketCommand, handleTicketButton } = require('./systems/tickets');
 const { handleEventCommand } = require('./systems/guild-events');
 const { handleStarboardCommand, handleStarboardReaction } = require('./systems/starboard');
+const { processWeeklyRankings } = require('./systems/weekly-rank');
 
 // Registry + catálogo completo de slash
 const {
@@ -84,6 +85,17 @@ client.once(Events.ClientReady, async (readyClient) => {
       console.error('maintenance:', err.message);
     }
   }, 6 * 60 * 60 * 1000);
+  // ranking semanal (checa a cada 1h se a semana ISO mudou)
+  setInterval(() => {
+    processWeeklyRankings(readyClient, data).catch((err) => {
+      console.error('weekly rank:', err.message);
+      trackError('ranking.weekly', err);
+    });
+  }, 60 * 60 * 1000);
+  // tenta uma vez alguns minutos após o boot
+  setTimeout(() => {
+    processWeeklyRankings(readyClient, data).catch(() => {});
+  }, 90_000);
 });
 
 client.on('raw', (packet) => {

@@ -51,6 +51,11 @@ function handleConfigCommand(message, data) {
     return true;
   }
 
+  if (subcommand === 'ranking' || subcommand === 'rank' || subcommand === 'ranks') {
+    setRankingChannel(message, args, data);
+    return true;
+  }
+
   message.reply({
     title: '⚙️ Uso do !config',
     description: [
@@ -60,7 +65,8 @@ function handleConfigCommand(message, data) {
       '`!config welcome on|off` · `!config goodbye on|off`',
       '`!config ticket on|off`',
       '`!config ticketcategoria #categoria | off`',
-      '`!config ticketcargo @cargo | off`'
+      '`!config ticketcargo @cargo | off`',
+      '`!config ranking #canal | off` — ranking semanal automático'
     ].join('\n')
   });
   return true;
@@ -110,6 +116,11 @@ function showConfigPanel(message, data) {
         inline: true
       },
       {
+        name: '🏆 Ranking semanal',
+        value: config.rankingChannelId ? `<#${config.rankingChannelId}>` : '*desativado*',
+        inline: true
+      },
+      {
         name: '🛠️ Comandos',
         value: [
           '`!config logs #canal | off`',
@@ -118,12 +129,37 @@ function showConfigPanel(message, data) {
           '`!config goodbye on|off`',
           '`!config ticket on|off`',
           '`!config ticketcategoria #categoria | off`',
-          '`!config ticketcargo @cargo | off`'
+          '`!config ticketcargo @cargo | off`',
+          '`!config ranking #canal | off`'
         ].join('\n'),
         inline: false
       }
     ]
   });
+}
+
+function setRankingChannel(message, args, data) {
+  const guildData = getGuildData(data, message.guild.id);
+
+  if (args[2]?.toLowerCase() === 'off') {
+    guildData.config.rankingChannelId = null;
+    saveData(data);
+    message.reply('Ranking semanal automático desativado.');
+    return;
+  }
+
+  const channel = message.mentions.channels.first();
+  if (!channel || !channel.isTextBased()) {
+    message.reply('Use: `!config ranking #canal` ou `!config ranking off`');
+    return;
+  }
+
+  guildData.config.rankingChannelId = channel.id;
+  // permite postar nesta semana se ainda não postou
+  saveData(data);
+  message.reply(
+    `Ranking semanal em ${channel}. Posta ao virar a semana ISO · manual: \`!ranking\`.`
+  );
 }
 
 function setLogChannel(message, args, data) {

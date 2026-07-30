@@ -231,6 +231,7 @@ function contributeBakeryBoss(data, guildId, userId, servedCount) {
 
 module.exports = {
   handleEventCommand,
+  showEventStatus,
   ensureEvents,
   getXpMultiplier,
   getPointsMultiplier,

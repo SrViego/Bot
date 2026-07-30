@@ -190,6 +190,7 @@ module.exports = {
   sendGreen,
   createEmbed,
   buildPayload,
+  asThemedPayload,
   replyPretty,
   progressBar,
   pickRandom,

@@ -1096,6 +1096,8 @@ function showRank(message, data) {
 
 module.exports = {
   handleBakeryCommand,
+  showBakery,
+  showBakeryHelp,
   RECIPES,
   UPGRADES,
   ensureBakery,

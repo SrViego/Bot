@@ -4,7 +4,9 @@
  *
  * Comandos:
  *   !padaria / !bakery     status da padaria
- *   !assar [receita]       começa a assar (forno livre)
+ *   !assar [receita] [qtd] começa a assar (1+ fornos livres)
+ *   !repetir [qtd|receita] repete a última (ou do histórico)
+ *   !historico             últimas receitas assadas
  *   !servir                serve o que está pronto → moedas + xp
  *   !receitas              lista receitas desbloqueadas
  *   !forno                 compra forno extra (moedas da padaria)
@@ -128,6 +130,12 @@ const COMMANDS = new Set([
   '!bakery',
   '!assar',
   '!prepare',
+  '!repetir',
+  '!reassar',
+  '!denovo',
+  '!historico',
+  '!histórico',
+  '!recentes',
   '!servir',
   '!serve',
   '!receitas',
@@ -149,6 +157,9 @@ const COMMANDS = new Set([
   '!padariahelp',
   '!bakeryhelp'
 ]);
+
+const HISTORY_MAX = 15;
+const BAKE_QTY_MAX = 20;
 
 /** Pedidos de NPC — bônus calibrado */
 const ORDER_POOL = [
@@ -225,6 +236,14 @@ function handleBakeryCommand(message, data) {
     startBake(message, args, data);
     return true;
   }
+  if (command === '!repetir' || command === '!reassar' || command === '!denovo') {
+    repeatBake(message, args, data);
+    return true;
+  }
+  if (command === '!historico' || command === '!histórico' || command === '!recentes') {
+    showBakeHistory(message, data);
+    return true;
+  }
   if (command === '!servir' || command === '!serve') {
     serveReady(message, data);
     return true;
@@ -277,6 +296,9 @@ function defaultBakery() {
     upgrades: emptyUpgrades(),
     cooking: [], // { recipeId, readyAt, slot }
     order: null, // { id, name, need: {recipeId: n}, progress: {}, bonus, expiresAt }
+    /** @type {string[]} ids recentes (mais novo primeiro) */
+    history: [],
+    lastRecipeId: null,
     notifyReady: false,
     lastNotifyAt: 0,
     createdAt: Date.now()
@@ -302,6 +324,13 @@ function ensureBakery(userData) {
   if (!Number.isInteger(b.totalServed)) b.totalServed = 0;
   if (!Number.isInteger(b.totalEarned)) b.totalEarned = 0;
   if (!Array.isArray(b.cooking)) b.cooking = [];
+  if (!Array.isArray(b.history)) b.history = [];
+  b.history = b.history
+    .filter((id) => typeof id === 'string' && RECIPES.some((r) => r.id === id))
+    .slice(0, HISTORY_MAX);
+  if (b.lastRecipeId != null && typeof b.lastRecipeId !== 'string') b.lastRecipeId = null;
+  if (b.lastRecipeId && !RECIPES.some((r) => r.id === b.lastRecipeId)) b.lastRecipeId = null;
+  if (!b.lastRecipeId && b.history[0]) b.lastRecipeId = b.history[0];
   if (!b.upgrades || typeof b.upgrades !== 'object') b.upgrades = emptyUpgrades();
   for (const id of Object.keys(UPGRADES)) {
     const lv = b.upgrades[id];
@@ -390,19 +419,22 @@ function showBakeryHelp(message) {
     fields: [
       {
         name: '🔁 Loop',
-        value: '`!assar receita` → espera → `!servir` → moedas 🪙 + XP da padaria'
+        value:
+          '`!assar receita [qtd]` → espera → `!servir` → 🪙 + XP\n`!repetir [qtd]` reusa a última · `!historico` lista recentes'
       },
       {
         name: '📋 Comandos',
         value: [
           '`!padaria` — status',
-          '`!assar [receita]` — usa um forno livre',
+          '`!assar [receita] [qtd]` — 1+ fornos (ex: `!assar pao 3`)',
+          '`!repetir [qtd]` — última receita de novo',
+          '`!repetir <receita|#n> [qtd]` — do histórico',
+          '`!historico` — últimas assadas',
           '`!servir` — vende o que ficou pronto',
           '`!receitas` — o que você pode assar',
-          '`!forno` — compra mais forno',
-          '`!upgrade` — loja de melhorias (gasta 🪙 da padaria)',
-          '`!upgrade <id>` — compra um upgrade',
-          '`!pedido` — pedidos de NPC (bônus extra)',
+          '`!forno` — compra forno extra',
+          '`!upgrade` / `!upgrade <id>` — melhorias (🪙 padaria)',
+          '`!pedido` — pedidos de NPC',
           '`!fornonotify` — DM quando o forno fica pronto',
           '`!rankpadaria` — ranking do servidor'
         ].join('\n')
@@ -500,13 +532,53 @@ async function showBakery(message, data) {
   });
 }
 
-function startBake(message, args, data) {
+/**
+ * Separa receita e quantidade: `pao 3`, `3 pao`, `pao x3`, `tudo`/`max`/`all`.
+ * @returns {{ query: string, qty: number|null, fillAll: boolean }}
+ */
+function parseBakeRequest(argList) {
+  const tokens = argList.map((a) => String(a).trim()).filter(Boolean);
+  let qty = null;
+  let fillAll = false;
+  const recipeParts = [];
+
+  for (const t of tokens) {
+    const low = t.toLowerCase();
+    if (['tudo', 'max', 'all', 'full', 'cheio'].includes(low)) {
+      fillAll = true;
+      continue;
+    }
+    const m = t.match(/^(?:x|\*)?(\d+)$/i);
+    if (m) {
+      qty = Math.max(1, Math.min(BAKE_QTY_MAX, parseInt(m[1], 10)));
+      continue;
+    }
+    recipeParts.push(t);
+  }
+
+  return { query: recipeParts.join(' ').trim(), qty, fillAll };
+}
+
+function recordBakeHistory(b, recipeId, count) {
+  if (!Array.isArray(b.history)) b.history = [];
+  b.lastRecipeId = recipeId;
+  for (let i = 0; i < count; i++) {
+    b.history.unshift(recipeId);
+  }
+  b.history = b.history.slice(0, HISTORY_MAX);
+}
+
+/**
+ * Inicia assados em N fornos livres.
+ * @returns {boolean}
+ */
+function beginBake(message, data, recipe, requestedQty) {
   const userData = getUserData(data, message.guild.id, message.author.id);
   const b = ensureBakery(userData);
   const now = Date.now();
 
-  // limpa slots que já foram servidos? cooking holds both cooking and ready until serve
-  if (b.cooking.length >= b.ovens) {
+  const free = Math.max(0, b.ovens - b.cooking.length);
+  if (free <= 0) {
     const anyReady = b.cooking.some((j) => j.readyAt <= now);
     message.reply({
       title: '🔥 Fornos ocupados',
@@ -515,14 +587,72 @@ function startBake(message, args, data) {
         : `Todos os **${b.ovens}** forno(s) estão assando.\nVeja o tempo em \`!padaria\` ou compre outro com \`!forno\`.`,
       color: theme.colorWarn
     });
-    return;
+    return false;
   }
 
-  const query = args.slice(1).join(' ').trim();
+  if (recipe.unlockLevel > b.level) {
+    message.reply({
+      title: '🔒 Receita trancada',
+      description: `${recipe.emoji} **${recipe.name}** precisa da padaria **nível ${recipe.unlockLevel}** (você é **${b.level}**).`,
+      color: theme.colorError
+    });
+    return false;
+  }
+
+  const want = Math.max(1, Math.min(BAKE_QTY_MAX, requestedQty || 1));
+  const count = Math.min(want, free);
+  const cookMs = Math.max(5_000, Math.floor(recipe.cookMs * cookTimeMultiplier(b)));
+  const readyAt = now + cookMs;
+
+  for (let i = 0; i < count; i++) {
+    b.cooking.push({ recipeId: recipe.id, readyAt });
+  }
+  recordBakeHistory(b, recipe.id, count);
+  trackQuest(data, message.guild.id, message.author.id, 'bakery_bake', count, false);
+  persistAuthor(data, message);
+
+  const speedLv = upgradeLevel(b, 'speed');
+  const speedNote =
+    speedLv > 0
+      ? ` ⚡ −${4 * speedLv}% (${formatDuration(recipe.cookMs)} → ${formatDuration(cookMs)})`
+      : '';
+
+  const multi =
+    count > 1
+      ? `**${count}×** **${recipe.name}** nos fornos!`
+      : `**${recipe.name}** entrou no forno!`;
+
+  const partial =
+    want > count
+      ? `\n_(Pediu **${want}**, só havia **${count}** forno(s) livre(s).)_`
+      : '';
+
+  message.reply({
+    title: `${recipe.emoji} Assando…`,
+    description: [
+      multi,
+      `Pronto <t:${Math.floor(readyAt / 1000)}:R> · \`${formatDuration(cookMs)}\`${speedNote}`,
+      `Fornos: **${b.cooking.length}/${b.ovens}** em uso (${free - count} livre(s))`,
+      b.notifyReady ? '🔔 Aviso por DM ativado (`!fornonotify`)' : '',
+      partial,
+      '',
+      'Quando acabar: `!servir` · repetir: `!repetir` · `!historico`'
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    color: theme.color
+  });
+  return true;
+}
+
+function startBake(message, args, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const b = ensureBakery(userData);
+  const { query, qty, fillAll } = parseBakeRequest(args.slice(1));
+
   let recipe = findRecipe(query);
 
   if (!recipe) {
-    // sugestão: primeira desbloqueada mais rápida se não passou nome
     const unlocked = unlockedRecipes(b.level);
     if (!query && unlocked.length) {
       recipe = unlocked[0];
@@ -535,7 +665,7 @@ function startBake(message, args, data) {
         title: '🥖 O que assar?',
         description: query
           ? `Não achei a receita **${query}**.\nUse \`!receitas\` ou um id:`
-          : 'Use `!assar <receita>` — exemplos:',
+          : 'Use `!assar <receita> [qtd]` — ex: `!assar pao 3` ou `!assar pao tudo`',
         fields: [{ name: 'Desbloqueadas', value: list || '*suba de nível!*' }],
         color: theme.color
       });
@@ -543,39 +673,120 @@ function startBake(message, args, data) {
     }
   }
 
-  if (recipe.unlockLevel > b.level) {
+  const free = Math.max(0, b.ovens - b.cooking.length);
+  const requested = fillAll ? free || 1 : qty || 1;
+  beginBake(message, data, recipe, requested);
+}
+
+/**
+ * !repetir [qtd|tudo]
+ * !repetir <receita|#n> [qtd|tudo]
+ * !historico → lista com #1 #2 …
+ */
+function repeatBake(message, args, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const b = ensureBakery(userData);
+  const rest = args.slice(1);
+  const { query, qty, fillAll } = parseBakeRequest(rest);
+
+  let recipe = null;
+
+  // !repetir 3  → só quantidade da última
+  // !repetir #2 ou 2 quando parece índice do histórico
+  if (!query) {
+    if (!b.lastRecipeId && !b.history[0]) {
+      message.reply({
+        title: '🔁 Nada pra repetir',
+        description:
+          'Você ainda não assou nada nesta padaria.\nUse `!assar pao` e depois `!repetir`.',
+        color: theme.colorWarn
+      });
+      return;
+    }
+    recipe = RECIPES.find((r) => r.id === (b.lastRecipeId || b.history[0]));
+  } else {
+    const idxMatch = query.match(/^#?(\d+)$/);
+    if (idxMatch) {
+      const idx = parseInt(idxMatch[1], 10) - 1;
+      const unique = uniqueHistory(b);
+      if (idx >= 0 && idx < unique.length) {
+        recipe = RECIPES.find((r) => r.id === unique[idx]);
+      }
+    }
+    if (!recipe) recipe = findRecipe(query);
+    // se query for só número e não achou no histórico como índice, trata como qtd da última
+    if (!recipe && /^\d+$/.test(query) && !qty) {
+      const n = Math.max(1, Math.min(BAKE_QTY_MAX, parseInt(query, 10)));
+      recipe = RECIPES.find((r) => r.id === (b.lastRecipeId || b.history[0]));
+      if (recipe) {
+        const free = Math.max(0, b.ovens - b.cooking.length);
+        beginBake(message, data, recipe, fillAll ? free || 1 : n);
+        return;
+      }
+    }
+  }
+
+  if (!recipe) {
     message.reply({
-      title: '🔒 Receita trancada',
-      description: `${recipe.emoji} **${recipe.name}** precisa da padaria **nível ${recipe.unlockLevel}** (você é **${b.level}**).`,
-      color: theme.colorError
+      title: '🔁 Receita inválida',
+      description:
+        'Use `!repetir` (última), `!repetir 3`, `!repetir pao 2` ou `!historico` e `!repetir #2`.',
+      color: theme.colorWarn
     });
     return;
   }
 
-  const cookMs = Math.max(5_000, Math.floor(recipe.cookMs * cookTimeMultiplier(b)));
-  const readyAt = now + cookMs;
-  b.cooking.push({ recipeId: recipe.id, readyAt });
-  trackQuest(data, message.guild.id, message.author.id, 'bakery_bake', 1, false);
-  persistAuthor(data, message);
+  const free = Math.max(0, b.ovens - b.cooking.length);
+  const requested = fillAll ? free || 1 : qty || 1;
+  beginBake(message, data, recipe, requested);
+}
 
-  const speedLv = upgradeLevel(b, 'speed');
-  const speedNote =
-    speedLv > 0
-      ? ` ⚡ −${4 * speedLv}% (${formatDuration(recipe.cookMs)} → ${formatDuration(cookMs)})`
-      : '';
+function uniqueHistory(b) {
+  const seen = new Set();
+  const out = [];
+  for (const id of b.history || []) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  if (b.lastRecipeId && !seen.has(b.lastRecipeId)) {
+    out.unshift(b.lastRecipeId);
+  }
+  return out.slice(0, HISTORY_MAX);
+}
+
+function showBakeHistory(message, data) {
+  const userData = getUserData(data, message.guild.id, message.author.id);
+  const b = ensureBakery(userData);
+  const unique = uniqueHistory(b);
+
+  if (!unique.length) {
+    message.reply({
+      title: '📜 Histórico vazio',
+      description: 'Asse algo com `!assar pao` — as receitas recentes aparecem aqui.',
+      color: theme.colorWarn
+    });
+    return;
+  }
+
+  const lines = unique.map((id, i) => {
+    const r = RECIPES.find((x) => x.id === id);
+    const mark = id === b.lastRecipeId ? ' ← última' : '';
+    return r
+      ? `\`#${i + 1}\` ${r.emoji} **${r.name}** (\`${r.id}\`)${mark}`
+      : `\`#${i + 1}\` \`${id}\``;
+  });
 
   message.reply({
-    title: `${recipe.emoji} Assando…`,
+    title: '📜 Receitas recentes',
     description: [
-      `**${recipe.name}** entrou no forno!`,
-      `Pronto <t:${Math.floor(readyAt / 1000)}:R> · \`${formatDuration(cookMs)}\`${speedNote}`,
-      `Fornos: **${b.cooking.length}/${b.ovens}** em uso`,
-      b.notifyReady ? '🔔 Aviso por DM ativado (`!fornonotify`)' : '',
+      lines.join('\n'),
       '',
-      'Quando acabar: `!servir`'
-    ]
-      .filter(Boolean)
-      .join('\n'),
+      '`!repetir` — última de novo',
+      '`!repetir 3` — última em **3** fornos',
+      '`!repetir #2` — a do `#2`',
+      '`!assar pao tudo` — enche fornos livres'
+    ].join('\n'),
     color: theme.color
   });
 }

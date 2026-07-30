@@ -68,12 +68,12 @@ const HELP_PAGES = [
       {
         name: '🥖 Comandos',
         value:
-          '`!padaria` `!assar` `!servir` `!receitas` `!forno` `!upgrade` `!pedido` `!fornonotify` `!rankpadaria`'
+          '`!padaria` `!assar [qtd]` `!repetir` `!historico` `!servir` `!receitas` `!forno` `!upgrade` `!pedido` `!fornonotify` `!rankpadaria`'
       },
       {
-        name: '⬆️ Upgrades & pedidos',
+        name: '⬆️ Upgrades & multi-forno',
         value:
-          '`!upgrade speed|profit|mastery|luck|charm`\n`!pedido novo` — combo de NPC com bônus de 🪙'
+          '`!assar pao 3` · `!assar pao tudo` · `!repetir 2` · `!historico`\n`!upgrade speed|profit|mastery|luck|charm` · `!pedido novo`'
       }
     ]
   },

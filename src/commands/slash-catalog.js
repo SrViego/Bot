@@ -240,9 +240,46 @@ const ENTRIES = [
   { name: 'padaria', description: 'Status da padaria', toContent: () => '!padaria', handler: handleBakeryCommand },
   {
     name: 'assar',
-    description: 'Assar receita',
-    build: [str('receita', 'ex: pao')],
-    toContent: (i) => `!assar ${optStr(i, 'receita')}`.trim(),
+    description: 'Assar receita em 1+ fornos',
+    build: [
+      str('receita', 'ex: pao'),
+      int('quantidade', 'quantos fornos (ou use tudo)'),
+      (b) =>
+        b.addBooleanOption((o) =>
+          o.setName('tudo').setDescription('Encher todos os fornos livres').setRequired(false)
+        )
+    ],
+    toContent: (i) => {
+      const r = optStr(i, 'receita');
+      const q = optInt(i, 'quantidade');
+      const all = i.options.getBoolean('tudo');
+      return `!assar ${[r, all ? 'tudo' : q].filter(Boolean).join(' ')}`.trim();
+    },
+    handler: handleBakeryCommand
+  },
+  {
+    name: 'repetir',
+    description: 'Repetir última receita (ou do histórico)',
+    build: [
+      str('receita', 'id, nome ou #1 do histórico'),
+      int('quantidade', 'quantos fornos'),
+      (b) =>
+        b.addBooleanOption((o) =>
+          o.setName('tudo').setDescription('Encher fornos livres').setRequired(false)
+        )
+    ],
+    toContent: (i) => {
+      const r = optStr(i, 'receita');
+      const q = optInt(i, 'quantidade');
+      const all = i.options.getBoolean('tudo');
+      return `!repetir ${[r, all ? 'tudo' : q].filter(Boolean).join(' ')}`.trim();
+    },
+    handler: handleBakeryCommand
+  },
+  {
+    name: 'historico',
+    description: 'Últimas receitas que você assou',
+    toContent: () => '!historico',
     handler: handleBakeryCommand
   },
   { name: 'servir', description: 'Servir o que está pronto', toContent: () => '!servir', handler: handleBakeryCommand },

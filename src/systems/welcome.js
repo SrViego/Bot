@@ -22,15 +22,23 @@ async function sendWelcome(channel, member) {
     description: [
       `Olá, ${member}! 🍃`,
       '',
-      'Fique à vontade, leia as regras e aproveite o servidor.',
-      'Use `!ajuda` para ver os comandos da Morgana.'
+      'Fique à vontade, leia as regras e aproveite o hall.',
+      '',
+      '**Primeiro passo com a Morgana:**',
+      '`!inicio` ou `/inicio` — trilho da 1ª semana (daily, padaria, Pokémon…)',
+      '`!ajuda` — guia completo de comandos'
     ].join('\n'),
     thumbnail: user.displayAvatarURL({ size: 256, extension: 'png' }),
     image: gif,
     fields: [
       { name: '👤 Membro', value: `${user.tag}`, inline: true },
       { name: '📊 Contagem', value: `Você é o **#${memberCount}**`, inline: true },
-      { name: '📅 Conta criada', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true }
+      { name: '📅 Conta criada', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
+      {
+        name: '🌿 Começar',
+        value: '`!inicio` · `/inicio` · `!daily` · `!ajuda`',
+        inline: false
+      }
     ],
     author: {
       name: guild.name,

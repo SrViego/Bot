@@ -4,12 +4,17 @@ const { shopItems } = require('./shop');
 const { getNeededXp } = require('./xp');
 const { progressBar } = require('./theme');
 const { profileCosmeticLines, ensureCosmetics } = require('./cosmetics');
+const { markProfileSeen } = require('./onboarding');
 
 function handleProfileCommand(message, data) {
   const command = message.content.trim().split(/\s+/)[0].toLowerCase();
   if (command !== '!perfil' && command !== '!profile') return false;
 
   const target = message.mentions.users.first() ?? message.author;
+  // trilho de chegada: só conta se olhou o próprio perfil
+  if (target.id === message.author.id) {
+    markProfileSeen(data, message.guild.id, message.author.id);
+  }
   const guildData = getGuildData(data, message.guild.id);
   const userData = getUserData(data, message.guild.id, target.id);
   const partnerId = guildData.marriages[target.id];

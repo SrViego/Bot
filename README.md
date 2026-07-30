@@ -29,9 +29,11 @@ Repo: [SrViego/Bot](https://github.com/SrViego/Bot)
 
 Arquitetura / SQLite / segurança / registry / métricas:  
 → [`docs/REVIEW-ARQUITETURA.md`](docs/REVIEW-ARQUITETURA.md)  
+Roadmap (3 sprints): [`docs/ROADMAP.md`](docs/ROADMAP.md)  
 Segurança: [`docs/SECURITY-CHECKLIST.md`](docs/SECURITY-CHECKLIST.md) · `./scripts/security-check.sh`  
 Métricas (staff): `!metrics` · `!metrics errors`  
 DB: `DATA_BACKEND=json|sqlite` · migrar: `node scripts/migrate-json-to-sqlite.js`  
+Chegada: `!inicio` / `/inicio` — trilho da 1ª semana  
 Comandos (registry): `src/commands/` — `!ping` `!lore` `!ajuda` `!play`…  
 SQLite: `saveUser` / `mutateUser` / `saveDataSoon` (semana 4)
 

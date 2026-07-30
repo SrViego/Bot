@@ -12,6 +12,11 @@ const HELP_PAGES = [
     description: 'Página **1/6** — visão geral.\nBotões abaixo ou `!ajuda 2`, `!ajuda 3`…',
     fields: [
       {
+        name: '🌿 Novo aqui?',
+        value:
+          '`!inicio` / `/inicio` — **trilho da 1ª semana** (daily → chat → quest → padaria → poke → perfil)\nRecompensa ao completar tudo.'
+      },
+      {
         name: '🛠️ Utilidade',
         value:
           '`!ping` `!ajuda [página]` `!avatar` `!userinfo` `!serverinfo` `!say` `!limpeza`\n`!ticket` · `!serverstats` · `!lore`'

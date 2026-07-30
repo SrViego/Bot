@@ -21,6 +21,7 @@ const { handleExchangeCommand } = require('../systems/economy-bridge');
 const { handleBetCommand } = require('../systems/bets');
 const { handleAchievementsCommand } = require('../systems/achievements');
 const { handleServerStatsCommand } = require('../systems/server-stats');
+const { handleOnboardingCommand } = require('../systems/onboarding');
 
 /** @param {{ name: string, aliases?: string[], description: string, category?: string, permission?: bigint, handler: Function, data?: boolean }} opts */
 function legacy(opts) {
@@ -37,6 +38,15 @@ function legacy(opts) {
     legacyMessageHandler: (message, data) => opts.handler(message, data)
   });
 }
+
+// ── Chegada ────────────────────────────────────────────────────
+legacy({
+  name: 'inicio',
+  aliases: ['começar', 'comecar', 'onboarding', 'start', 'trilho', 'tutorial'],
+  description: 'Trilho da 1ª semana (checklist + recompensa)',
+  category: 'util',
+  handler: handleOnboardingCommand
+});
 
 // ── Economia / perfil ──────────────────────────────────────────
 legacy({

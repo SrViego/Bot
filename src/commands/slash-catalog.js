@@ -33,6 +33,7 @@ const { handleCleanupCommand } = require('../systems/cleanup');
 const { handleTicketCommand } = require('../systems/tickets');
 const { handleStarboardCommand } = require('../systems/starboard');
 const { handleModLogCommand } = require('../systems/modlogs');
+const { handleOnboardingCommand } = require('../systems/onboarding');
 
 const str = (name, desc, required = false) => (b) =>
   b.addStringOption((o) => o.setName(name).setDescription(desc).setRequired(required));
@@ -68,6 +69,14 @@ function optInt(interaction, ...names) {
 
 /** @type {Array<object>} */
 const ENTRIES = [
+  // ── Chegada ──────────────────────────────────────────────
+  {
+    name: 'inicio',
+    description: 'Trilho da 1ª semana — checklist e recompensa',
+    toContent: () => '!inicio',
+    handler: handleOnboardingCommand
+  },
+
   // ── Economia ─────────────────────────────────────────────
   { name: 'pontos', description: 'Ver seus pontos (ou de alguém)', build: [user('user', 'Membro')], toContent: (i) => mentionContent('pontos', i), handler: handlePointsCommand },
   { name: 'daily', description: 'Resgatar daily de pontos', toContent: () => '!daily', handler: handlePointsCommand },
@@ -243,16 +252,25 @@ const ENTRIES = [
     description: 'Assar receita em 1+ fornos',
     build: [
       str('receita', 'ex: pao'),
-      int('quantidade', 'quantos fornos (ou use tudo)'),
+      int('quantidade', 'quantos fornos (se não for “tudo”)'),
       (b) =>
-        b.addBooleanOption((o) =>
-          o.setName('tudo').setDescription('Encher todos os fornos livres').setRequired(false)
+        b.addStringOption((o) =>
+          o
+            .setName('tudo')
+            .setDescription('Encher todos os fornos livres?')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Sim', value: 'sim' },
+              { name: 'Não', value: 'nao' }
+            )
         )
     ],
     toContent: (i) => {
       const r = optStr(i, 'receita');
       const q = optInt(i, 'quantidade');
-      const all = i.options.getBoolean('tudo');
+      const all = ['sim', 's', 'yes', 'true', '1'].includes(
+        (optStr(i, 'tudo') || '').toLowerCase()
+      );
       return `!assar ${[r, all ? 'tudo' : q].filter(Boolean).join(' ')}`.trim();
     },
     handler: handleBakeryCommand
@@ -264,14 +282,23 @@ const ENTRIES = [
       str('receita', 'id, nome ou #1 do histórico'),
       int('quantidade', 'quantos fornos'),
       (b) =>
-        b.addBooleanOption((o) =>
-          o.setName('tudo').setDescription('Encher fornos livres').setRequired(false)
+        b.addStringOption((o) =>
+          o
+            .setName('tudo')
+            .setDescription('Encher todos os fornos livres?')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Sim', value: 'sim' },
+              { name: 'Não', value: 'nao' }
+            )
         )
     ],
     toContent: (i) => {
       const r = optStr(i, 'receita');
       const q = optInt(i, 'quantidade');
-      const all = i.options.getBoolean('tudo');
+      const all = ['sim', 's', 'yes', 'true', '1'].includes(
+        (optStr(i, 'tudo') || '').toLowerCase()
+      );
       return `!repetir ${[r, all ? 'tudo' : q].filter(Boolean).join(' ')}`.trim();
     },
     handler: handleBakeryCommand

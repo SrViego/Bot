@@ -52,28 +52,36 @@ async function registerSlashCommands(client) {
     : [...client.guilds.cache.keys()];
 
   try {
-    // 1) Por guild — instantâneo no app Discord
-    for (const guildId of guildIds) {
-      try {
-        await rest.put(Routes.applicationGuildCommands(appId, guildId), {
-          body: merged
-        });
-        const g = client.guilds.cache.get(guildId);
-        console.log(
-          `[slash] guild ${g?.name || guildId}: ${merged.length} comandos (na hora)`
-        );
-      } catch (err) {
-        console.error(`[slash] guild ${guildId} failed:`, err.message);
-        if (err.rawError) {
-          console.error(JSON.stringify(err.rawError).slice(0, 800));
+    // Só um lugar por vez — guild+global = comandos duplicados no Discord.
+    // Preferência: guild (aparece na hora). Global só se não houver guild.
+    if (guildIds.length > 0) {
+      for (const guildId of guildIds) {
+        try {
+          await rest.put(Routes.applicationGuildCommands(appId, guildId), {
+            body: merged
+          });
+          const g = client.guilds.cache.get(guildId);
+          console.log(
+            `[slash] guild ${g?.name || guildId}: ${merged.length} comandos`
+          );
+        } catch (err) {
+          console.error(`[slash] guild ${guildId} failed:`, err.message);
+          if (err.rawError) {
+            console.error(JSON.stringify(err.rawError).slice(0, 800));
+          }
         }
       }
+      // limpa global antigo pra não duplicar no seletor /
+      await rest.put(Routes.applicationCommands(appId), { body: [] });
+      console.log('[slash] global limpo (evita duplicata com guild)');
+    } else {
+      await rest.put(Routes.applicationCommands(appId), { body: merged });
+      console.log(
+        `[slash] global: ${merged.length} comandos (sem guild em cache)`
+      );
     }
-
-    // 2) Global — propaga devagar (outros servers / fallback)
-    await rest.put(Routes.applicationCommands(appId), { body: merged });
     console.log(
-      `[slash] global: ${merged.length} comandos (${fromRegistry.length} registry + catálogo) — pode demorar a aparecer`
+      `[slash] total ${merged.length} (${fromRegistry.length} registry + catálogo)`
     );
     console.log(
       `[registry] prefix: ${listCommands().map((c) => c.name).join(', ')}`

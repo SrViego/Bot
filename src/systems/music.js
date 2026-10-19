@@ -17,7 +17,8 @@ const MUSIC_COMMANDS = [
 
 const LAVALINK_HOST = process.env.LAVALINK_HOST || "127.0.0.1";
 const LAVALINK_PORT = Number.parseInt(process.env.LAVALINK_PORT || "2333", 10);
-const LAVALINK_PASSWORD = process.env.LAVALINK_PASSWORD || "youshallnotpass";
+// Sem fallback: a senha tem que vir do .env (mesma do Lavalink: LAVALINK_SERVER_PASSWORD)
+const LAVALINK_PASSWORD = (process.env.LAVALINK_PASSWORD || "").trim();
 const LAVALINK_SECURE = process.env.LAVALINK_SECURE === "true";
 // ytsearch costuma ser mais estável que ytmsearch para vários títulos
 const LAVALINK_SEARCH_SOURCE = process.env.LAVALINK_SEARCH_SOURCE || "ytsearch";
@@ -42,6 +43,13 @@ function getLavalinkModule() {
 async function initLavalink(client) {
   discordClient = client;
   if (client.lavalink) return client.lavalink;
+  if (!LAVALINK_PASSWORD) {
+    console.error(
+      "[music] LAVALINK_PASSWORD não definido no .env — música desativada. " +
+        "Defina a mesma senha usada pelo Lavalink (LAVALINK_SERVER_PASSWORD)."
+    );
+    return null;
+  }
 
   const { LavalinkManager } = await getLavalinkModule();
   const manager = new LavalinkManager({

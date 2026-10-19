@@ -76,7 +76,7 @@ GOODBYE_CHANNEL_ID=
 # No Docker o compose usa o host interno "lavalink" automaticamente
 LAVALINK_HOST=127.0.0.1
 LAVALINK_PORT=2333
-LAVALINK_PASSWORD=youshallnotpass
+LAVALINK_PASSWORD=troque_por_uma_senha_forte   # obrigatório; o Lavalink usa a mesma (LAVALINK_SERVER_PASSWORD)
 LAVALINK_SECURE=false
 LAVALINK_SEARCH_SOURCE=ytsearch
 LAVALINK_SEARCH_FALLBACKS=ytsearch,ytmsearch,scsearch

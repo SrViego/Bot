@@ -24,10 +24,12 @@ if [[ -f .env ]]; then
   else
     fail_ "DISCORD_TOKEN ausente ou placeholder"
   fi
-  if grep -q 'youshallnotpass' .env 2>/dev/null; then
-    warn_ "LAVALINK_PASSWORD ainda é o default (ok só em rede Docker isolada)"
+  if ! grep -qE '^LAVALINK_PASSWORD=.+' .env 2>/dev/null; then
+    warn_ "LAVALINK_PASSWORD ausente — música fica desativada"
+  elif grep -qE 'youshallnotpass|troque_essa_senha' .env 2>/dev/null; then
+    warn_ "LAVALINK_PASSWORD ainda é default/placeholder — troque por uma senha forte"
   else
-    pass "LAVALINK_PASSWORD customizado (ou ausente)"
+    pass "LAVALINK_PASSWORD customizado"
   fi
 else
   fail_ ".env não encontrado (cp .env.example .env)"

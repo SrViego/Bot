@@ -144,7 +144,12 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 
 client.on(Events.GuildMemberAdd, async (member) => {
   const guildData = getGuildData(data, member.guild.id);
-  await applyAutoRole(member, data);
+  try {
+    await applyAutoRole(member, data);
+  } catch (err) {
+    console.error('Erro no autorole:', err);
+    trackError('autorole', err, { guildId: member.guild.id, userId: member.id });
+  }
 
   if (!guildData.config.welcomeEnabled) return;
 
@@ -236,6 +241,20 @@ async function getTextChannel(guild, channelId) {
 
   return guild.systemChannel?.isTextBased() ? guild.systemChannel : null;
 }
+
+client.on(Events.Error, (err) => {
+  console.error('discord client error:', err);
+  trackError('client.error', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection:', reason);
+  trackError('process.unhandledRejection', reason instanceof Error ? reason : new Error(String(reason)));
+});
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException:', err);
+  trackError('process.uncaughtException', err);
+});
 
 // semana 4: flush debounce SQLite no shutdown
 for (const sig of ['SIGINT', 'SIGTERM']) {

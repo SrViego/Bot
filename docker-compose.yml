@@ -12,6 +12,9 @@ services:
     image: morgana-lavalink:local
     container_name: morgana-lavalink
     restart: unless-stopped
+    environment:
+      # mesma senha que o bot usa (LAVALINK_PASSWORD no .env); obrigatório
+      LAVALINK_SERVER_PASSWORD: ${LAVALINK_PASSWORD:?defina LAVALINK_PASSWORD no .env}
     volumes:
       # Só a config — plugins já estão na imagem (sem Permission denied)
       - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro

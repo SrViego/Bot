@@ -36,7 +36,7 @@ DB: SQLite (`data/morgana.db`, WAL) · `database.json` antigo é migrado sozinho
 Chegada: `!inicio` / `/inicio` — trilho da 1ª semana  
 Economia: `!economia` · `!ofrenda` · `!ranking` · `!config ranking #canal`  
 Slash agrupados: `/padaria` `/poke` `/loja` `/musica` `/mod` `/staff`… (prefixo `!` igual)  
-Staff: `!config alerta #canal` (Lavalink) · testes: `npm test` · backup: [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md)  
+Staff: `!config alerta #canal` (Lavalink) · testes: `npm test` · backup: [`docs/BACKUP-RESTORE.md`](docs/BACKUP-RESTORE.md) · YouTube/música: [`docs/MUSICA-YOUTUBE.md`](docs/MUSICA-YOUTUBE.md)  
 
 
 Comandos (registry): `src/commands/` — `!ping` `!lore` `!ajuda` `!play`…  

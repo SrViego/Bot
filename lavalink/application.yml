@@ -3,7 +3,7 @@ server:
   address: 0.0.0.0
 
 lavalink:
-  # Plugin YouTube vem embutido na imagem (Dockerfile.lavalink).
+  # Plugins vêm embutidos na imagem (Dockerfile.lavalink: youtube-plugin + LavaSrc).
   # NÃO listar "dependency" aqui — o container tenta baixar e falha com Permission denied.
   plugins: []
   server:
@@ -11,9 +11,10 @@ lavalink:
     # Sem a variável o Lavalink não sobe — de propósito.
     password: "${LAVALINK_SERVER_PASSWORD}"
     sources:
+      # fonte YouTube embutida do Lavalink fica DESLIGADA (o youtube-plugin assume)
       youtube: false
       bandcamp: true
-      soundcloud: true
+      soundcloud: true   # fallback quando o YouTube falha (scsearch:)
       twitch: true
       vimeo: true
       http: true
@@ -42,19 +43,58 @@ plugins:
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
+    # Ordem = ordem de tentativa (README do youtube-source).
+    # MUSIC só busca (ytmsearch). WEB/WEBEMBEDDED dependem do remoteCipher abaixo.
+    # TV só toca com OAuth. IOS foi tirado: na frente do WEB quebra o ytsearch (issue #250).
     clients:
       - MUSIC
-      - ANDROID_VR
-      - ANDROID_MUSIC
       - WEB
-      - MWEB
       - WEBEMBEDDED
+      - TVHTML5_SIMPLY
       - TV
-      - TVHTML5EMBEDDED
-      - MEDIA_CONNECT
-      - IOS
+      - ANDROID_VR
+    clientOptions:
+      MUSIC:
+        playback: false
+    # Decifrar assinatura agora fica num servidor externo (yt-cipher).
+    # O docker-compose sobe um yt-cipher local; dá pra trocar pela instância pública
+    # https://cipher.kikkia.dev/ via YT_CIPHER_URL.
+    remoteCipher:
+      url: "${YT_CIPHER_URL:http://yt-cipher:8001}"
+      password: "${YT_CIPHER_PASSWORD:}"
+      userAgent: "morgana-bot"
+    # OAuth com conta Google DESCARTÁVEL (risco de ban). Ver docs/MUSICA-YOUTUBE.md.
+    oauth:
+      enabled: ${YOUTUBE_OAUTH_ENABLED:false}
+      refreshToken: "${YOUTUBE_OAUTH_REFRESH_TOKEN:}"
+      # sem refresh token → inicia o fluxo (código no log); com token → pula o fluxo
+      skipInitialization: ${YOUTUBE_OAUTH_SKIP_INIT:false}
+
+  lavasrc:
+    # Só "espelha" links do Spotify/Apple/Deezer pra uma busca tocável.
+    # Tenta YouTube Music, depois YouTube, depois SoundCloud.
+    providers:
+      - "ytmsearch:\"%ISRC%\""
+      - "ytmsearch:%QUERY%"
+      - "ytsearch:%QUERY%"
+      - "scsearch:%QUERY%"
+    sources:
+      spotify: ${SPOTIFY_ENABLED:false}
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      flowerytts: false
+      youtube: false
+    spotify:
+      clientId: "${SPOTIFY_CLIENT_ID:}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET:}"
+      countryCode: "BR"
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
 
 logging:
   level:
     root: INFO
     lavalink: INFO
+    # mostra o código/URL do fluxo OAuth e o refresh token gerado
+    dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO

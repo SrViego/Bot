@@ -7,7 +7,9 @@ lavalink:
   # NÃO listar "dependency" aqui — o container tenta baixar e falha com Permission denied.
   plugins: []
   server:
-    password: "youshallnotpass"
+    # Vem do ambiente (docker-compose passa LAVALINK_PASSWORD do .env).
+    # Sem a variável o Lavalink não sobe — de propósito.
+    password: "${LAVALINK_SERVER_PASSWORD}"
     sources:
       youtube: false
       bandcamp: true

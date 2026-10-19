@@ -12,7 +12,7 @@ Rode o script (automático):
 - [ ] `DISCORD_TOKEN` só no `.env` / secret do host
 - [ ] Token **nunca** colado em issue/Discord/print
 - [ ] Se o token vazou: [Portal Discord](https://discord.com/developers/applications) → Reset Token
-- [ ] `LAVALINK_PASSWORD` forte se a porta for acessível fora do compose
+- [ ] `LAVALINK_PASSWORD` forte (obrigatório; o Lavalink lê a mesma via `LAVALINK_SERVER_PASSWORD`, sem default no código)
 
 ### Discord
 - [ ] Intents: Message Content, Server Members (só o necessário)

@@ -1,83 +1,67 @@
 #!/usr/bin/env node
 /**
- * Importa data/database.json → data/morgana.db
+ * Migração MANUAL data/database.json → data/morgana.db
+ *
+ * Normalmente não precisa: o bot faz isso sozinho no primeiro start
+ * (idempotente; o JSON é copiado pra data/backups/ e nunca é apagado).
  *
  * Uso:
- *   node scripts/migrate-json-to-sqlite.js
- *   node scripts/migrate-json-to-sqlite.js ./data/database.json ./data/morgana.db
- *   DATA_BACKEND=sqlite node scripts/migrate-json-to-sqlite.js --force
+ *   node scripts/migrate-json-to-sqlite.js                 # usa data/database.json
+ *   node scripts/migrate-json-to-sqlite.js ./outro.json    # JSON específico
+ *   node scripts/migrate-json-to-sqlite.js --force         # reimporta mesmo com DB já populado
+ *                                                         #   (faz backup do .db antes)
  *
- * Depois, no .env:
- *   DATA_BACKEND=sqlite
+ * MORGANA_DATA_DIR=/caminho muda o diretório de dados (default: ./data).
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = path.join(__dirname, '..');
-const args = process.argv.slice(2).filter((a) => a !== '--force');
 const force = process.argv.includes('--force');
+const args = process.argv.slice(2).filter((a) => a !== '--force');
 
-const jsonPath = path.resolve(args[0] || path.join(root, 'data', 'database.json'));
-const dbPath = path.resolve(args[1] || path.join(root, 'data', 'morgana.db'));
+const sqlite = require('../src/systems/database-sqlite');
+const jsonPath = path.resolve(args[0] || sqlite.legacyJsonFile);
 
 if (!fs.existsSync(jsonPath)) {
   console.error(`JSON não encontrado: ${jsonPath}`);
   process.exit(1);
 }
 
-if (fs.existsSync(dbPath) && !force) {
-  console.error(`SQLite já existe: ${dbPath}`);
-  console.error('Use --force para sobrescrever (faça backup antes).');
-  process.exit(1);
-}
+(async () => {
+  const dbExisted = fs.existsSync(sqlite.getDbPath());
+  const db = sqlite.getDb(); // pode já ter migrado sozinho aqui (se o DB era novo)
 
-// aponta o módulo sqlite para o path desejado via env
-process.env.DATA_BACKEND = 'sqlite';
-
-// se --force, remove db antigo
-if (force && fs.existsSync(dbPath)) {
-  for (const p of [dbPath, dbPath + '-wal', dbPath + '-shm']) {
-    if (fs.existsSync(p)) fs.unlinkSync(p);
+  if (force) {
+    if (dbExisted) {
+      const bak = await sqlite.backupData('pre-force-migrate');
+      if (!bak) {
+        console.error('Backup do .db falhou — abortando --force.');
+        process.exit(1);
+      }
+    }
+    db.transaction(() => {
+      db.exec('DELETE FROM user_blob; DELETE FROM guild_config; DELETE FROM guild_bucket;');
+      db.prepare("DELETE FROM meta WHERE key IN ('json_migrated_at', 'json_migrated_from')").run();
+    })();
+    sqlite.closeDb();
+    sqlite.getDb();
   }
-  console.log('Removido DB anterior.');
-}
 
-const raw = fs.readFileSync(jsonPath, 'utf8');
-let data;
-try {
-  data = JSON.parse(raw);
-} catch (err) {
-  console.error('JSON inválido:', err.message);
+  const r = sqlite.migrateFromJsonIfNeeded(sqlite.getDb(), jsonPath);
+  const d = sqlite.getDb();
+  const n = (t) => d.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n;
+  const migratedAt = d.prepare("SELECT value FROM meta WHERE key = 'json_migrated_at'").get()?.value;
+
+  console.log(`status: ${r.status}${migratedAt ? ` (json_migrated_at=${migratedAt})` : ''}`);
+  if (r.status === 'preexisting-db') {
+    console.log('O SQLite já tinha dados — nada importado. Use --force pra reimportar (faz backup antes).');
+  }
+  console.log(`  users (blobs): ${n('user_blob')}`);
+  console.log(`  guild_configs: ${n('guild_config')}`);
+  console.log(`  guild_buckets: ${n('guild_bucket')}`);
+  console.log(`  arquivo: ${sqlite.getDbPath()}`);
+  sqlite.closeDb();
+})().catch((err) => {
+  console.error(err.message || err);
   process.exit(1);
-}
-
-// Garante que database-sqlite use data/ no root do projeto
-const sqlite = require('../src/systems/database-sqlite');
-
-// Se o path customizado for diferente, avisamos — o módulo usa data/morgana.db fixo
-const expected = sqlite.getDbPath();
-if (path.resolve(expected) !== dbPath) {
-  console.warn(`Nota: o backend grava em ${expected}`);
-  console.warn(`Você pediu ${dbPath} — copie depois se necessário.`);
-}
-
-console.log(`Importando ${jsonPath} …`);
-sqlite.importDataObject(data);
-
-// verifica contagens
-const db = sqlite.getDb();
-const users = db.prepare('SELECT COUNT(*) AS n FROM user_blob').get().n;
-const configs = db.prepare('SELECT COUNT(*) AS n FROM guild_config').get().n;
-const buckets = db.prepare('SELECT COUNT(*) AS n FROM guild_bucket').get().n;
-
-console.log('OK.');
-console.log(`  users (blobs): ${users}`);
-console.log(`  guild_configs: ${configs}`);
-console.log(`  guild_buckets: ${buckets}`);
-console.log(`  arquivo: ${sqlite.getDbPath()}`);
-console.log('');
-console.log('Ative no .env:');
-console.log('  DATA_BACKEND=sqlite');
-console.log('Reinicie o bot.');
-
-sqlite.closeDb();
+});

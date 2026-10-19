@@ -1,4 +1,4 @@
-const { getUserData, saveUser } = require('./database');
+const { getUserData, mutateUsers } = require('./database');
 
 const repCooldown = 12 * 60 * 60 * 1000;
 
@@ -48,10 +48,10 @@ function giveReputation(message, data) {
   }
 
   const targetData = getUserData(data, message.guild.id, target.id);
-  targetData.rep += 1;
-  authorData.lastRepAt = now;
-  saveUser(data, message.guild.id, message.author.id);
-  saveUser(data, message.guild.id, target.id);
+  mutateUsers(data, message.guild.id, [message.author.id, target.id], ([author, tgt]) => {
+    tgt.rep += 1;
+    author.lastRepAt = now;
+  });
 
   message.channel.send(`${message.author} deu +1 reputacao para ${target}. Total: ${targetData.rep}.`);
 }

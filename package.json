@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node scripts/smoke-test.js",
+    "test": "node scripts/smoke-test.js && node --test test/*.test.js",
     "smoke": "node scripts/smoke-test.js",
     "lint": "eslint ."
   },
@@ -18,7 +18,7 @@
     "pngjs": "^7.0.0"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.14.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

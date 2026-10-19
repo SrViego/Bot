@@ -34,10 +34,12 @@ services:
     env_file:
       - .env
     environment:
+      DATA_BACKEND: sqlite
       LAVALINK_HOST: lavalink
       LAVALINK_PORT: "2333"
       LAVALINK_SECURE: "false"
     volumes:
+      # morgana.db (+ -wal/-shm) e backups/ vivem aqui — persistido no host
       - ./data:/app/data
     depends_on:
       lavalink:

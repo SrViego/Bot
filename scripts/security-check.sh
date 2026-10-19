@@ -79,15 +79,19 @@ else
   warn_ "data/backups/ ainda não existe (é criado no primeiro start)"
 fi
 
-# DATA_BACKEND
-if [[ -f .env ]] && grep -qE '^DATA_BACKEND=sqlite' .env; then
-  if [[ -f data/morgana.db ]]; then
-    pass "DATA_BACKEND=sqlite e data/morgana.db existe"
-  else
-    fail_ "DATA_BACKEND=sqlite mas data/morgana.db não existe — rode migrate-json-to-sqlite.js"
-  fi
+# Persistência (SQLite é o único backend)
+if [[ -f .env ]] && grep -qE '^DATA_BACKEND=json' .env; then
+  warn_ "DATA_BACKEND=json no .env é ignorado agora (SQLite sempre) — troque para sqlite ou remova"
+fi
+if [[ -f data/morgana.db ]]; then
+  pass "data/morgana.db existe"
+elif [[ -f data/database.json ]]; then
+  warn_ "só data/database.json — será migrado automaticamente para morgana.db no próximo start"
 else
-  pass "DATA_BACKEND=json (ou não definido)"
+  warn_ "nenhum banco ainda (morgana.db é criado no primeiro start)"
+fi
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git ls-files --error-unmatch data/morgana.db >/dev/null 2>&1; then
+  fail_ "data/morgana.db está versionado no git!"
 fi
 
 # metrics

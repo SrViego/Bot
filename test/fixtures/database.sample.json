@@ -1,0 +1,19 @@
+{
+  "users": {
+    "g1": {
+      "u1": { "points": 500, "xp": 120, "level": 3, "rep": 2, "inventory": { "cafe": 2 }, "stats": { "dailies": 4 } },
+      "u2": { "points": 50, "xp": 10, "level": 1, "rep": 0, "inventory": {}, "stats": {} }
+    },
+    "g2": {
+      "u3": { "points": 9999, "xp": 0, "level": 1, "bakery": { "coins": 42, "ovens": [{ "item": "pao" }] } }
+    }
+  },
+  "marriages": { "g1": { "u1": "u2", "u2": "u1" } },
+  "proposals": {},
+  "warnings": { "g1": { "u2": [{ "reason": "spam", "at": 1700000000000 }] } },
+  "guildConfigs": { "g1": { "logChannelId": "123", "autoRoleId": "456", "starboardMin": 5 } },
+  "moderationLogs": { "g1": [{ "action": "warn", "userId": "u2" }] },
+  "tickets": { "g1": {} },
+  "betPools": { "g1": [{ "userId": "u1", "choice": "cara", "amount": 10 }] },
+  "starboard": {}
+}

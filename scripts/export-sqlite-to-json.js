@@ -1,20 +1,26 @@
 #!/usr/bin/env node
 /**
- * Exporta data/morgana.db → data/database.json (rollback / inspeção)
+ * Exporta data/morgana.db → JSON (rollback para versão antiga do bot / inspeção)
  *
  * Uso:
- *   DATA_BACKEND=sqlite node scripts/export-sqlite-to-json.js
- *   node scripts/export-sqlite-to-json.js ./data/out.json
+ *   node scripts/export-sqlite-to-json.js                     # data/database.from-sqlite.json
+ *   node scripts/export-sqlite-to-json.js ./data/database.json
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
-process.env.DATA_BACKEND = 'sqlite';
 const sqlite = require('../src/systems/database-sqlite');
 
-const out = path.resolve(process.argv[2] || path.join(__dirname, '..', 'data', 'database.from-sqlite.json'));
+const out = path.resolve(process.argv[2] || path.join(sqlite.dataDir, 'database.from-sqlite.json'));
 const data = sqlite.loadData();
-// loadData faz backup start — ok
-fs.writeFileSync(out, JSON.stringify(data, null, 2));
+if (fs.existsSync(out)) {
+  const bak = `${out}.bak-${Date.now()}`;
+  fs.copyFileSync(out, bak);
+  console.log(`(arquivo existente salvo em ${path.basename(bak)})`);
+}
+const tmp = `${out}.${process.pid}.tmp`;
+fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+fs.renameSync(tmp, out);
 console.log(`Exportado → ${out}`);
-sqlite.closeDb();
+// espera o backup 'start' assíncrono do loadData terminar antes de fechar
+setTimeout(() => sqlite.closeDb(), 500);

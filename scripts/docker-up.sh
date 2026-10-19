@@ -13,7 +13,18 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p data lavalink/plugins
+mkdir -p data/backups lavalink/plugins
+
+# Backup antes do deploy (o volume ./data é do host)
+if docker compose ps --status running bot 2>/dev/null | grep -q morgana-bot; then
+  echo "==> Backup online do SQLite (bot rodando)..."
+  docker compose exec -T bot node scripts/backup-db.js pre-deploy || echo "AVISO: backup online falhou"
+fi
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+if [[ -f data/database.json && ! -f data/morgana.db ]]; then
+  cp data/database.json "data/backups/database-predeploy-$STAMP.json"
+  echo "==> Backup do JSON legado: data/backups/database-predeploy-$STAMP.json (migração automática no start)"
+fi
 
 echo "==> Build + up (bot + lavalink)..."
 docker compose up -d --build

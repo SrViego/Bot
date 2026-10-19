@@ -433,7 +433,9 @@ Semana 1:  ✅ M0 backup JSON + metrics JSONL + checklist segurança + !metrics
 Semana 2:  ✅ M1–M2 SQLite + migrate-json-to-sqlite + DATA_BACKEND=json|sqlite
 Semana 3:  ✅ Registry + ping/lore/ajuda/music (+ slash ping/lore/ajuda)
 Semana 4:  ✅ UPSERT incremental + saveUser/mutateUser/saveDataSoon + métricas no SQLite
-Depois:    migrar mais comandos pro registry; fatiar pokemon/bakery
+Semana 5:  ✅ SQLite padrão (único backend) + migração automática idempotente + saveData por diff
+           + mutateUsers/saveUsers atômicos + backup online (.backup()) + testes
+Depois:    migrar mais comandos pro registry; fatiar pokemon/bakery; normalizar user_blob
 ```
 
 ### Semana 4 — writes SQLite

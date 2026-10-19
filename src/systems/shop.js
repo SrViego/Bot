@@ -1,6 +1,7 @@
 const {
   getUserData,
   saveUser,
+  mutateUsers,
   hasActiveEffect,
   getEffectRemainingMs
 } = require('./database');
@@ -489,13 +490,13 @@ function giftItem(message, args, data) {
     return;
   }
 
-  const targetData = getUserData(data, message.guild.id, target.id);
-  senderData.inventory[item.id] -= 1;
-  if (senderData.inventory[item.id] <= 0) delete senderData.inventory[item.id];
-  targetData.inventory[item.id] = (targetData.inventory[item.id] ?? 0) + 1;
-  senderData.stats.giftsSent = (senderData.stats.giftsSent ?? 0) + 1;
-  saveUser(data, message.guild.id, message.author.id);
-  saveUser(data, message.guild.id, target.id);
+  // tira de um e dá pro outro na MESMA transação (sem item duplicado/perdido)
+  mutateUsers(data, message.guild.id, [message.author.id, target.id], ([sender, receiver]) => {
+    sender.inventory[item.id] -= 1;
+    if (sender.inventory[item.id] <= 0) delete sender.inventory[item.id];
+    receiver.inventory[item.id] = (receiver.inventory[item.id] ?? 0) + 1;
+    sender.stats.giftsSent = (sender.stats.giftsSent ?? 0) + 1;
+  });
 
   message.channel.send({
     title: '🎁 Presente entregue!',

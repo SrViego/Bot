@@ -15,15 +15,15 @@ RUN npm ci --omit=dev
 COPY src ./src
 COPY assets ./assets
 COPY scripts ./scripts
-# Pokédex estática (runtime database.json / morgana.db vem do volume)
+# Pokédex estática (runtime morgana.db vem do volume; database.json legado só p/ migração)
 COPY data/pokemon-data.json ./data/pokemon-data.json
 COPY data/pokemon-evolutions.json ./data/pokemon-evolutions.json
 RUN mkdir -p /app/data /app/data/backups /app/data/metrics \
   && chown -R node:node /app
 
 ENV NODE_ENV=production
-# json | sqlite
-ENV DATA_BACKEND=json
+# SQLite é o único backend (data/morgana.db no volume /app/data)
+ENV DATA_BACKEND=sqlite
 # Segurança: não rodar como root
 USER node
 CMD ["node", "src/index.js"]

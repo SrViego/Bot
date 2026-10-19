@@ -32,7 +32,7 @@ Arquitetura / SQLite / segurança / registry / métricas:
 Roadmap (3 sprints): [`docs/ROADMAP.md`](docs/ROADMAP.md)  
 Segurança: [`docs/SECURITY-CHECKLIST.md`](docs/SECURITY-CHECKLIST.md) · `./scripts/security-check.sh`  
 Métricas (staff): `!metrics` · `!metrics errors`  
-DB: `DATA_BACKEND=json|sqlite` · migrar: `node scripts/migrate-json-to-sqlite.js`  
+DB: SQLite (`data/morgana.db`, WAL) · `database.json` antigo é migrado sozinho no 1º start · backup: `node scripts/backup-db.js`  
 Chegada: `!inicio` / `/inicio` — trilho da 1ª semana  
 Economia: `!economia` · `!ofrenda` · `!ranking` · `!config ranking #canal`  
 Slash agrupados: `/padaria` `/poke` `/loja` `/musica` `/mod` `/staff`… (prefixo `!` igual)  
@@ -167,7 +167,7 @@ cp .env.example .env
 | `Dockerfile` / `docker-compose.yml` | ✅ | ✅ |
 | `data/pokemon-data.json` (Pokédex) | ✅ | ✅ |
 | `.env` (token) | ✅ | ❌ |
-| `data/database.json` (progresso dos players) | ✅ | ❌ |
+| `data/morgana.db` (progresso dos players) | ✅ | ❌ |
 | `nodejs/`, `java/`, jars do Lavalink | ✅ (se existirem) | ❌ |
 | `node_modules/` | ✅ após `npm install` | ❌ |
 
@@ -192,7 +192,8 @@ Morgana/
     bakery/               # sprites PNG da padaria
       bg.png, oven_*.png, items/, README.md
   data/
-    database.json         # runtime (local)
+    morgana.db            # runtime SQLite (local, fora do git)
+    backups/              # backups automáticos
     pokemon-data.json     # Pokédex (no Git)
   lavalink/
     application.yml

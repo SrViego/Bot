@@ -2,15 +2,14 @@
  * Sistema Pokémon (pokedex completa, loja, captura, PvP)
  * Só funciona no canal POKEMON_CHANNEL_ID.
  */
-const { getUserData, saveUser } = require('./database');
+const { getUserData, saveUser, saveUsers } = require('./database');
 
 function persistAuthor(data, message) {
   saveUser(data, message.guild.id, message.author.id);
 }
+/** grava vencedor + perdedor na mesma transação */
 function persistUsers(data, guildId, ...ids) {
-  for (const id of ids) {
-    if (id) saveUser(data, guildId, id);
-  }
+  saveUsers(data, guildId, ids.filter(Boolean));
 }
 const {
   getAllPokemon,

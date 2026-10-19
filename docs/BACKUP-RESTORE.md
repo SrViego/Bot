@@ -2,69 +2,84 @@
 
 ## O que é guardado
 
-| Backend | Arquivo vivo | Backups |
-|---------|--------------|---------|
-| `DATA_BACKEND=json` | `data/database.json` | `data/backups/database-*.json` |
-| `DATA_BACKEND=sqlite` | `data/morgana.db` | `data/backups/morgana-*.db` |
+| Arquivo vivo | Backups |
+|--------------|---------|
+| `data/morgana.db` (+ `-wal`/`-shm` com WAL) | `data/backups/morgana-*.db` |
 
-Também existem: métricas em `data/metrics/`, pokédex estática em `data/pokemon-*.json` (não é progresso de jogador).
+O SQLite é o **único** backend. O antigo `data/database.json` só é lido **uma vez**:
+no primeiro start sem dados no SQLite ele é importado automaticamente, copiado para
+`data/backups/database-premigration-*.json` e **mantido** no lugar (nunca é apagado).
 
-No **Docker**, o volume `./data:/app/data` mantém tudo no host.
+Também existem: métricas em `data/metrics/` e pokédex estática em `data/pokemon-*.json`
+(não é progresso de jogador).
+
+No **Docker**, o volume `./data:/app/data` mantém tudo no host. Nada disso vai pro git
+(`data/*` está no `.gitignore`).
+
+> ⚠️ Não copie só `morgana.db` com o bot ligado: com WAL, dados recentes ficam no
+> `-wal`. Use o backup online abaixo (ou pare o bot antes de copiar).
 
 ## Backup automático
 
-O bot grava:
+Usa a **API de backup online do SQLite** (`better-sqlite3 .backup()`), consistente
+mesmo com o bot rodando:
 
-- **No start** — snapshot `*-start-*.db` / json  
-- **Diário** — `*-daily-YYYY-MM-DD.*`  
-- Retenção configurável (padrão ~14) via env / código de prune  
+- **No start** — `morgana-start-*.db`
+- **Diário** — `morgana-daily-YYYY-MM-DD.db` (checado a cada 6h)
+- Retenção: `DATA_BACKUP_KEEP` (padrão 14) — os `database-premigration-*.json` **não** são apagados
 
-Não depende do Discord estar “calmo”: o start backup roda ao subir o container.
+## Backup manual
 
-## Restore manual (SQLite)
+```sh
+# com o bot rodando (Docker)
+docker compose exec bot node scripts/backup-db.js manual
+# local
+node scripts/backup-db.js manual
+```
 
-1. Pare o bot:
+`./scripts/docker-up.sh` já faz um backup `pre-deploy` se o bot estiver rodando.
+
+## Restore (SQLite)
+
+1. Pare o bot: `docker compose stop bot`
+2. Guarde o atual e restaure:
    ```sh
-   docker compose stop bot
-   ```
-2. Copie o backup por cima do DB atual (guarde o atual antes):
-   ```sh
-   cp data/morgana.db data/morgana.db.bak-manual
+   mkdir -p data/restore-old && mv data/morgana.db* data/restore-old/
    cp data/backups/morgana-daily-AAAA-MM-DD.db data/morgana.db
    ```
-3. Suba de novo:
-   ```sh
-   docker compose start bot
-   ```
+3. Suba: `docker compose start bot`
 
-## Restore manual (JSON)
+## Migração JSON → SQLite
+
+Automática no primeiro start. Para rodar na mão (bot parado):
+
+```sh
+node scripts/migrate-json-to-sqlite.js            # idempotente: não reimporta
+node scripts/migrate-json-to-sqlite.js --force    # reimporta (faz backup do .db antes)
+```
+
+Se o `database.json` estiver corrompido, o bot **não sobe** (para não criar um banco
+vazio por cima). Restaure um `data/backups/database-*.json` válido e tente de novo.
+
+## Rollback para a versão antiga (JSON)
 
 ```sh
 docker compose stop bot
-cp data/database.json data/database.json.bak-manual
-cp data/backups/database-daily-….json data/database.json
-docker compose start bot
+node scripts/export-sqlite-to-json.js data/database.json   # salva o JSON existente como .bak-*
+git checkout <commit-anterior>   # versão que ainda tinha DATA_BACKEND=json
+# no .env: DATA_BACKEND=json
+docker compose up -d --build
 ```
-
-## Migrar JSON → SQLite
-
-```sh
-# com o bot parado (recomendado)
-node scripts/migrate-json-to-sqlite.js
-# no .env: DATA_BACKEND=sqlite
-```
-
-Exportar SQLite → JSON: `node scripts/export-sqlite-to-json.js`.
 
 ## Checklist se “sumiu progresso”
 
-1. `docker compose ps` — bot up?  
-2. `ls -lt data/backups | head` — há backup recente?  
-3. O volume `./data` ainda é o mesmo path do host?  
-4. Restore a partir do `*-daily-*` do dia anterior.  
+1. `docker compose ps` — bot up?
+2. `ls -lt data/backups | head` — há backup recente?
+3. O volume `./data` ainda é o mesmo path do host?
+4. Restore a partir do `morgana-daily-*` do dia anterior.
 5. `!metrics errors` (staff) se o bot estiver online.
 
 ## Alertas
 
-`!config alerta #canal` — avisa se o **Lavalink** cair (música).  
+`!config alerta #canal` — avisa se o **Lavalink** cair (música).
 Isso **não** substitui backup de dados.

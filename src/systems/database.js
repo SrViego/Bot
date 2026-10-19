@@ -1,21 +1,26 @@
 /**
- * Facade de persistência.
- * DATA_BACKEND=json (default) | sqlite
+ * Facade de persistência — SQLite é o único backend em runtime (data/morgana.db).
  *
- * Semana 1: JSON + backup atômico
- * Semana 2: SQLite load/save
- * Semana 4: saveUser / mutateUser / saveDataSoon (upsert incremental no SQLite)
+ * O antigo data/database.json só é lido UMA vez, na migração automática do
+ * primeiro start (ver migrateFromJsonIfNeeded em database-sqlite.js).
+ * Rollback: scripts/export-sqlite-to-json.js (ver docs/BACKUP-RESTORE.md).
  */
 
-const backend = (process.env.DATA_BACKEND || 'json').toLowerCase();
-
-if (backend === 'sqlite') {
-  console.log('[database] backend = sqlite (data/morgana.db)');
-  module.exports = require('./database-sqlite');
-} else {
-  if (backend !== 'json') {
-    console.warn(`[database] DATA_BACKEND="${backend}" desconhecido — usando json`);
-  }
-  console.log('[database] backend = json (data/database.json)');
-  module.exports = require('./database-json');
+const backend = (process.env.DATA_BACKEND || 'sqlite').toLowerCase();
+if (backend !== 'sqlite') {
+  console.warn(
+    `[database] DATA_BACKEND="${backend}" não é mais suportado em runtime — usando sqlite. ` +
+      '(O JSON legado é importado automaticamente no primeiro start.)'
+  );
 }
+
+// better-sqlite3 13 dá segfault em Node 22.12/22.13 (testado); 22.14+ ok
+const [maj, min] = process.versions.node.split('.').map(Number);
+if (maj === 22 && min < 14) {
+  console.error(`[database] Node ${process.versions.node} é incompatível com better-sqlite3 13 — use Node >= 22.14.`);
+}
+
+const sqlite = require('./database-sqlite');
+console.log(`[database] backend = sqlite (${sqlite.getDbPath()})`);
+
+module.exports = sqlite;

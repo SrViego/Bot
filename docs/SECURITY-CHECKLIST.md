@@ -28,7 +28,7 @@ Rode o script (automático):
 ### Dados
 - [ ] `data/backups/` com cópias recentes
 - [ ] `data/metrics/` sem conteúdo de mensagens (só nomes de comando)
-- [ ] `.env` e `database.json` fora do git
+- [ ] `.env`, `morgana.db*` e `database.json` fora do git
 
 ### Operação
 - [ ] Staff usa `!metrics` / `!metrics errors` após incidentes
@@ -38,8 +38,8 @@ Rode o script (automático):
 ## Comandos úteis
 
 ```bash
-# backup manual (com bot parado ou via shell no container)
-cp data/database.json "data/backups/database-manual-$(date -u +%Y%m%dT%H%M%SZ).json"
+# backup manual (online, pode ser com o bot ligado)
+docker compose exec bot node scripts/backup-db.js manual   # ou: node scripts/backup-db.js manual
 
 # ver métricas do dia
 tail -n 20 data/metrics/*.jsonl

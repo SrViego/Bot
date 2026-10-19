@@ -7,7 +7,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createEmbed } = require('./theme');
 
-const metricsDir = path.join(__dirname, '..', '..', 'data', 'metrics');
+const metricsDir = path.join(
+  path.resolve(process.env.MORGANA_DATA_DIR || path.join(__dirname, '..', '..', 'data')),
+  'metrics'
+);
 const RETENTION_DAYS = Number(process.env.METRICS_RETENTION_DAYS || 14);
 
 function ensureDir() {
@@ -43,8 +46,8 @@ function track(evt) {
     };
     fs.appendFileSync(dayFile(row.t), `${JSON.stringify(row)}\n`, 'utf8');
 
-    // Semana 4: também grava na tabela SQLite se o backend for sqlite
-    if ((process.env.DATA_BACKEND || 'json').toLowerCase() === 'sqlite') {
+    // também grava na tabela SQLite (backend único)
+    {
       try {
         const { getDb } = require('./database');
         const db = getDb();

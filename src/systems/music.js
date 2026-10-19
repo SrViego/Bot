@@ -122,9 +122,15 @@ async function initLavalink(client) {
   manager.on("trackError", async (player, track, payload) => {
     const reason = explainTrackError(payload);
     console.error("[lavalink] trackError:", trackTitle(track), reason, payload?.exception?.message || payload);
+    const fallback = await tryFallbackSource(player, track).catch((err) => {
+      console.warn("[lavalink] fallback falhou:", err?.message || err);
+      return null;
+    });
     await sendPlayerMessage(
       player,
-      `❌ Não consegui tocar **${trackTitle(track)}** (${reason}). Pulando…`
+      fallback
+        ? `⚠️ YouTube falhou em **${trackTitle(track)}** (${reason}). Tentando no SoundCloud: **${trackTitle(fallback)}**`
+        : `❌ Não consegui tocar **${trackTitle(track)}** (${reason}). Pulando…`
     );
   });
 
@@ -301,6 +307,27 @@ async function sendPlayerMessage(player, content) {
   if (channel?.isTextBased()) {
     await channel.send(content).catch(() => null);
   }
+}
+
+// Fallback quando o YouTube falha NA REPRODUÇÃO (não só na busca): procura a mesma música
+// no SoundCloud e coloca como próxima da fila. MUSIC_FALLBACK_SOURCE= (vazio) desliga.
+const MUSIC_FALLBACK_SOURCE = (process.env.MUSIC_FALLBACK_SOURCE ?? "scsearch").trim();
+
+async function tryFallbackSource(player, track) {
+  if (!MUSIC_FALLBACK_SOURCE) return null;
+  const info = track?.info ?? {};
+  if (String(info.sourceName || "").toLowerCase() !== "youtube") return null;
+  if (track?.userData?.isFallback) return null; // evita loop
+  const query = [info.title, info.author].filter(Boolean).join(" ").slice(0, 200);
+  if (!query) return null;
+
+  const result = await player.search({ query, source: MUSIC_FALLBACK_SOURCE }, track.requester);
+  const alt = result?.tracks?.[0];
+  if (!alt) return null;
+  alt.userData = { ...(alt.userData || {}), isFallback: true };
+  await player.queue.add(alt, 0);
+  if (!player.playing) await player.play().catch(() => null);
+  return alt;
 }
 
 /**

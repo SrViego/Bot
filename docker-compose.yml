@@ -15,6 +15,15 @@ services:
     environment:
       # mesma senha que o bot usa (LAVALINK_PASSWORD no .env); obrigatório
       LAVALINK_SERVER_PASSWORD: ${LAVALINK_PASSWORD:?defina LAVALINK_PASSWORD no .env}
+      # YouTube (ver docs/MUSICA-YOUTUBE.md) — tudo opcional, segredos só no .env
+      YT_CIPHER_URL: ${YT_CIPHER_URL:-http://yt-cipher:8001}
+      YT_CIPHER_PASSWORD: ${YT_CIPHER_PASSWORD:-}
+      YOUTUBE_OAUTH_ENABLED: ${YOUTUBE_OAUTH_ENABLED:-false}
+      YOUTUBE_OAUTH_REFRESH_TOKEN: ${YOUTUBE_OAUTH_REFRESH_TOKEN:-}
+      YOUTUBE_OAUTH_SKIP_INIT: ${YOUTUBE_OAUTH_SKIP_INIT:-false}
+      SPOTIFY_ENABLED: ${SPOTIFY_ENABLED:-false}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
     volumes:
       # Só a config — plugins já estão na imagem (sem Permission denied)
       - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
@@ -26,6 +35,18 @@ services:
       timeout: 5s
       retries: 10
       start_period: 45s
+
+  # Servidor de cipher do YouTube (https://github.com/kikkia/yt-cipher).
+  # Só na rede interna do compose (sem "ports:"), o Lavalink acessa por http://yt-cipher:8001
+  yt-cipher:
+    image: ghcr.io/kikkia/yt-cipher:master
+    container_name: morgana-yt-cipher
+    restart: unless-stopped
+    environment:
+      OVERRIDE_PLAYER_VARIANT: IAS
+      API_TOKEN: ${YT_CIPHER_PASSWORD:-}
+    networks:
+      - morgana
 
   bot:
     build: .
